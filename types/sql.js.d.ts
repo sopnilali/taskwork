@@ -1,4 +1,7 @@
 declare module 'sql.js' {
+    interface SqlJsConfig {
+        locateFile?: (filename: string) => string;
+    }
     interface SqlJsStatic {
         Database: new (data?: ArrayLike<number>) => Database;
     }
@@ -15,6 +18,6 @@ declare module 'sql.js' {
         getAsObject(): Record<string, unknown>;
         free(): void;
     }
-    export default function initSqlJs(): Promise<SqlJsStatic>;
-    export { SqlJsStatic, Database, Statement };
+    export default function initSqlJs(config?: SqlJsConfig): Promise<SqlJsStatic>;
+    export { SqlJsStatic, Database, Statement, SqlJsConfig };
 }

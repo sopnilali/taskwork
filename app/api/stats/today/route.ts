@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
         if (!user) return authResponse();
 
         const today = queryOne(
-            "SELECT COALESCE(SUM(total_duration), 0) as total, COALESCE(SUM(total_duration * hourly_rate / 3600), 0) as earnings FROM tasks WHERE user_id = ? AND date(created_at) = date('now')",
+            "SELECT COALESCE(SUM(total_duration), 0) as total, COALESCE(SUM(total_duration * hourly_rate / 3600), 0) as earnings, COUNT(*) as count FROM tasks WHERE user_id = ? AND date(created_at) = date('now')",
             [user.id]
         ) as Record<string, unknown>;
 
@@ -23,10 +23,16 @@ export async function GET(req: NextRequest) {
             [user.id]
         ) as Record<string, unknown>;
 
+        const total = queryOne(
+            "SELECT COALESCE(SUM(total_duration * hourly_rate / 3600), 0) as earnings FROM tasks WHERE user_id = ?",
+            [user.id]
+        ) as Record<string, unknown>;
+
         return NextResponse.json({
-            today: { totalDuration: today.total, totalEarnings: today.earnings },
+            today: { totalDuration: today.total, totalEarnings: today.earnings, count: today.count },
             week: { totalDuration: week.total, totalEarnings: week.earnings, count: week.count },
             month: { totalDuration: month.total, totalEarnings: month.earnings, count: month.count },
+            total: { totalEarnings: total.earnings },
         });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';

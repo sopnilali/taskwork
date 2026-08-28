@@ -18,7 +18,10 @@ function saveDatabase() {
 export async function getDb(): Promise<Database> {
     if (db) return db;
 
-    const SQL = await initSqlJs();
+    const wasmPath = path.join(process.cwd(), 'node_modules/sql.js/dist/sql-wasm.wasm');
+    const SQL = await initSqlJs({
+        locateFile: () => wasmPath,
+    });
 
     if (fs.existsSync(DB_PATH)) {
         const fileBuffer = fs.readFileSync(DB_PATH);
