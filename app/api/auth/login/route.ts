@@ -23,8 +23,9 @@ export async function POST(req: NextRequest) {
             return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
         }
 
-        const token = signToken({ id: user.id, username: user.username });
-        return NextResponse.json({ token, user: { id: user.id, username: user.username } });
+        const isAdmin = user.is_admin === true;
+        const token = signToken({ id: user.id, username: user.username, is_admin: isAdmin });
+        return NextResponse.json({ token, user: { id: user.id, username: user.username, is_admin: isAdmin } });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json({ error: message }, { status: 500 });

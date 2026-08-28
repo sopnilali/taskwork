@@ -10,9 +10,12 @@ export async function initDatabase() {
             id SERIAL PRIMARY KEY,
             username TEXT NOT NULL UNIQUE,
             password_hash TEXT NOT NULL,
+            is_admin BOOLEAN DEFAULT false,
             created_at TEXT DEFAULT (now()::text)
         )
     `;
+
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false`;
 
     await sql`
         CREATE TABLE IF NOT EXISTS tasks (

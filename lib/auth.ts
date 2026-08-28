@@ -7,10 +7,11 @@ const JWT_EXPIRY = '7d';
 export interface UserPayload {
     id: number;
     username: string;
+    is_admin: boolean;
 }
 
 export function signToken(user: UserPayload): string {
-    return jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
+    return jwt.sign({ id: user.id, username: user.username, is_admin: user.is_admin }, JWT_SECRET, { expiresIn: JWT_EXPIRY });
 }
 
 export function verifyToken(token: string): UserPayload | null {
@@ -35,4 +36,11 @@ export function authenticate(req: NextRequest): UserPayload | null {
 
 export function authResponse() {
     return NextResponse.json({ error: 'Access denied' }, { status: 401 });
+}
+
+export function adminOnly(req: NextRequest): { user: UserPayload } | NextResponse {
+    const user = authenticate(req);
+    if (!user) return authResponse();
+    if (!user.is_admin) return NextResponse.json({ error: 'Admin access required' }, { status: 403 });
+    return { user };
 }

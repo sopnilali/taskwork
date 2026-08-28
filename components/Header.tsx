@@ -1,6 +1,7 @@
 'use client';
 
 import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
 
 export default function Header() {
     const { user, logout } = useAuth();
@@ -15,6 +16,11 @@ export default function Header() {
                 <span className="header-badge">Free Online Task Timer</span>
             </div>
             <div className="header-right">
+                {user?.is_admin && (
+                    <Link href="/admin" className="header-btn" title="Admin Panel" style={{ textDecoration: 'none' }}>
+                        <i className="fas fa-shield-halved"></i>
+                    </Link>
+                )}
                 {user && (
                     <>
                         <span className="header-username">{user.username}</span>

@@ -7,6 +7,7 @@ const TOKEN_KEY = 'tasktimer_token';
 interface User {
     id: number;
     username: string;
+    is_admin: boolean;
 }
 
 interface AuthContextType {

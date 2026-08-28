@@ -24,12 +24,12 @@ export async function POST(req: NextRequest) {
         }
 
         const passwordHash = await bcrypt.hash(password, 10);
-        const result = await sql`INSERT INTO users (username, password_hash) VALUES (${username}, ${passwordHash}) RETURNING id, username`;
+        const result = await sql`INSERT INTO users (username, password_hash) VALUES (${username}, ${passwordHash}) RETURNING id, username, is_admin`;
 
         const user = result[0];
-        const token = signToken({ id: user.id, username: user.username });
+        const token = signToken({ id: user.id, username: user.username, is_admin: user.is_admin || false });
 
-        return NextResponse.json({ token, user: { id: user.id, username: user.username } }, { status: 201 });
+        return NextResponse.json({ token, user: { id: user.id, username: user.username, is_admin: user.is_admin || false } }, { status: 201 });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json({ error: message }, { status: 500 });
