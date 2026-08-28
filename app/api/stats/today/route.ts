@@ -15,12 +15,12 @@ export async function GET(req: NextRequest) {
 
         const week = await sql`
             SELECT COALESCE(SUM(total_duration), 0)::int as total, COALESCE(SUM(total_duration * hourly_rate / 3600), 0)::int as earnings, COUNT(*)::int as count
-            FROM tasks WHERE user_id = ${user.id} AND created_at >= (now() - interval '7 days')
+            FROM tasks WHERE user_id = ${user.id} AND created_at::timestamp >= (now() - interval '7 days')
         `;
 
         const month = await sql`
             SELECT COALESCE(SUM(total_duration), 0)::int as total, COALESCE(SUM(total_duration * hourly_rate / 3600), 0)::int as earnings, COUNT(*)::int as count
-            FROM tasks WHERE user_id = ${user.id} AND created_at >= (now() - interval '30 days')
+            FROM tasks WHERE user_id = ${user.id} AND created_at::timestamp >= (now() - interval '30 days')
         `;
 
         const total = await sql`

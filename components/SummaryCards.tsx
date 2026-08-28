@@ -6,26 +6,16 @@ import { useAuth } from '@/contexts/AuthContext';
 function formatHours(totalSeconds: number): string {
     const h = Math.floor(totalSeconds / 3600);
     const m = Math.floor((totalSeconds % 3600) / 60);
-    return `${h}h ${m}m`;
+    return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m`;
 }
 
 export default function SummaryCards({ refreshKey }: { refreshKey: number }) {
     const { authFetch } = useAuth();
 
-    const [todayCount, setTodayCount] = useState(0);
-    const [todayHours, setTodayHours] = useState('0h 0m');
+    const [todayTotal, setTodayTotal] = useState('00h 00m');
     const [todayEarnings, setTodayEarnings] = useState(0);
-
-    const [weekCount, setWeekCount] = useState(0);
-    const [weekHours, setWeekHours] = useState('0h 0m');
-    const [weekEarnings, setWeekEarnings] = useState(0);
-
-    const [monthCount, setMonthCount] = useState(0);
-    const [monthHours, setMonthHours] = useState('0h 0m');
-    const [monthEarnings, setMonthEarnings] = useState(0);
-
-    const [totalCount, setTotalCount] = useState(0);
-    const [totalEarnings, setTotalEarnings] = useState(0);
+    const [completedCount, setCompletedCount] = useState(0);
+    const [currentSession, setCurrentSession] = useState('00h 00m');
 
     const loadStats = useCallback(async () => {
         try {
@@ -38,20 +28,9 @@ export default function SummaryCards({ refreshKey }: { refreshKey: number }) {
 
             if (stats.error) return;
 
-            setTodayCount(Number(stats.today?.count) || 0);
-            setTodayHours(formatHours(Number(stats.today?.totalDuration) || 0));
+            setTodayTotal(formatHours(Number(stats.today?.totalDuration) || 0));
             setTodayEarnings(Math.round(Number(stats.today?.totalEarnings) || 0));
-
-            setWeekCount(Number(stats.week?.count) || 0);
-            setWeekHours(formatHours(Number(stats.week?.totalDuration) || 0));
-            setWeekEarnings(Math.round(Number(stats.week?.totalEarnings) || 0));
-
-            setMonthCount(Number(stats.month?.count) || 0);
-            setMonthHours(formatHours(Number(stats.month?.totalDuration) || 0));
-            setMonthEarnings(Math.round(Number(stats.month?.totalEarnings) || 0));
-
-            setTotalCount(Number(countData.count) || 0);
-            setTotalEarnings(Math.round(Number(stats.total?.totalEarnings) || 0));
+            setCompletedCount(Number(stats.today?.count) || 0);
         } catch (err) {
             console.error('Failed to load stats:', err);
         }
@@ -64,73 +43,34 @@ export default function SummaryCards({ refreshKey }: { refreshKey: number }) {
     }, [loadStats, refreshKey]);
 
     return (
-        <div className="stats-grid">
-            <div className="stats-section">
-                <div className="stats-section-title">Today</div>
-                <div className="stats-row">
-                    <div className="summary-card compact">
-                        <div className="summary-value">{todayCount}</div>
-                        <div className="summary-label">Tasks</div>
-                    </div>
-                    <div className="summary-card compact">
-                        <div className="summary-value">{todayHours}</div>
-                        <div className="summary-label">Hours</div>
-                    </div>
-                    <div className="summary-card compact">
-                        <div className="summary-value">৳{todayEarnings}</div>
-                        <div className="summary-label">Earnings</div>
-                    </div>
+        <div className="summary-cards">
+            <div className="summary-card">
+                <div className="summary-icon time">
+                    <i className="fas fa-clock"></i>
                 </div>
+                <div className="summary-label">Today&apos;s Total</div>
+                <div className="summary-value">{todayTotal}</div>
             </div>
-
-            <div className="stats-section">
-                <div className="stats-section-title">This Week</div>
-                <div className="stats-row">
-                    <div className="summary-card compact">
-                        <div className="summary-value">{weekCount}</div>
-                        <div className="summary-label">Tasks</div>
-                    </div>
-                    <div className="summary-card compact">
-                        <div className="summary-value">{weekHours}</div>
-                        <div className="summary-label">Hours</div>
-                    </div>
-                    <div className="summary-card compact">
-                        <div className="summary-value">৳{weekEarnings}</div>
-                        <div className="summary-label">Earnings</div>
-                    </div>
+            <div className="summary-card">
+                <div className="summary-icon session">
+                    <i className="fas fa-play-circle"></i>
                 </div>
+                <div className="summary-label">Current Session</div>
+                <div className="summary-value">{currentSession}</div>
             </div>
-
-            <div className="stats-section">
-                <div className="stats-section-title">This Month</div>
-                <div className="stats-row">
-                    <div className="summary-card compact">
-                        <div className="summary-value">{monthCount}</div>
-                        <div className="summary-label">Tasks</div>
-                    </div>
-                    <div className="summary-card compact">
-                        <div className="summary-value">{monthHours}</div>
-                        <div className="summary-label">Hours</div>
-                    </div>
-                    <div className="summary-card compact">
-                        <div className="summary-value">৳{monthEarnings}</div>
-                        <div className="summary-label">Earnings</div>
-                    </div>
+            <div className="summary-card">
+                <div className="summary-icon tasks">
+                    <i className="fas fa-check-circle"></i>
                 </div>
+                <div className="summary-label">Completed Tasks</div>
+                <div className="summary-value">{completedCount}</div>
             </div>
-
-            <div className="stats-section">
-                <div className="stats-section-title">Total</div>
-                <div className="stats-row">
-                    <div className="summary-card compact">
-                        <div className="summary-value">{totalCount}</div>
-                        <div className="summary-label">Tasks</div>
-                    </div>
-                    <div className="summary-card compact">
-                        <div className="summary-value">৳{totalEarnings}</div>
-                        <div className="summary-label">Earnings</div>
-                    </div>
+            <div className="summary-card">
+                <div className="summary-icon earnings">
+                    <i className="fas fa-bangladeshi-taka-sign"></i>
                 </div>
+                <div className="summary-label">Today&apos;s Earnings</div>
+                <div className="summary-value">৳{todayEarnings}</div>
             </div>
         </div>
     );

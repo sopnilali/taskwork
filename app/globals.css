@@ -401,7 +401,7 @@ body {
 
 .summary-cards {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 16px;
 }
 
@@ -476,6 +476,11 @@ body {
 .summary-icon.time {
   background: var(--primary-light);
   color: var(--primary);
+}
+
+.summary-icon.session {
+  background: var(--success-light);
+  color: var(--success);
 }
 
 .summary-icon.tasks {

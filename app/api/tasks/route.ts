@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
                     tasks = await sql`SELECT * FROM tasks WHERE user_id = ${userId} AND date(created_at) = date('now') ORDER BY created_at DESC`;
                     break;
                 case 'week':
-                    tasks = await sql`SELECT * FROM tasks WHERE user_id = ${userId} AND created_at >= (now() - interval '7 days') ORDER BY created_at DESC`;
+                    tasks = await sql`SELECT * FROM tasks WHERE user_id = ${userId} AND created_at::timestamp >= (now() - interval '7 days') ORDER BY created_at DESC`;
                     break;
                 case 'completed':
                     tasks = await sql`SELECT * FROM tasks WHERE user_id = ${userId} AND status = 'completed' ORDER BY created_at DESC`;
