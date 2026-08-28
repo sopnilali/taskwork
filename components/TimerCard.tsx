@@ -37,7 +37,7 @@ function getElapsedSeconds(timer: ActiveTimer): number {
     return timer.accumulated_duration + elapsed;
 }
 
-export default function TimerCard({ onTaskSaved }: { onTaskSaved: () => void }) {
+export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSaved: () => void; onSessionUpdate?: (seconds: number) => void }) {
     const { authFetch } = useAuth();
     const [taskName, setTaskName] = useState('');
     const [category, setCategory] = useState('Work');
@@ -70,12 +70,14 @@ export default function TimerCard({ onTaskSaved }: { onTaskSaved: () => void }) 
         if (!timer) {
             setDisplay('00:00:00');
             setCurrentSession('00h 00m');
+            onSessionUpdate?.(0);
             return;
         }
         const elapsed = getElapsedSeconds(timer);
         setDisplay(formatTime(elapsed));
         setCurrentSession(formatDurationShortLong(elapsed));
-    }, []);
+        onSessionUpdate?.(elapsed);
+    }, [onSessionUpdate]);
 
     const startInterval = useCallback(() => {
         stopInterval();
@@ -85,8 +87,9 @@ export default function TimerCard({ onTaskSaved }: { onTaskSaved: () => void }) 
             const elapsed = getElapsedSeconds(t);
             setDisplay(formatTime(elapsed));
             setCurrentSession(formatDurationShortLong(elapsed));
+            onSessionUpdate?.(elapsed);
         }, 1000);
-    }, []);
+    }, [onSessionUpdate]);
 
     function stopInterval() {
         if (intervalRef.current) {
@@ -317,13 +320,6 @@ export default function TimerCard({ onTaskSaved }: { onTaskSaved: () => void }) 
                             if (m > 0 && m <= 480) addTime(m);
                         }
                     }}>Custom</button>
-                </div>
-
-                <div className="summary-cards">
-                    <div className="summary-card">
-                        <div className="summary-value">{currentSession}</div>
-                        <div className="summary-label">Current Session</div>
-                    </div>
                 </div>
             </div>
         </div>

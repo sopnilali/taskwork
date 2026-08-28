@@ -9,13 +9,12 @@ function formatHours(totalSeconds: number): string {
     return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m`;
 }
 
-export default function SummaryCards({ refreshKey }: { refreshKey: number }) {
+export default function SummaryCards({ refreshKey, currentSessionSeconds }: { refreshKey: number; currentSessionSeconds: number }) {
     const { authFetch } = useAuth();
 
     const [todayTotal, setTodayTotal] = useState('00h 00m');
     const [todayEarnings, setTodayEarnings] = useState(0);
     const [completedCount, setCompletedCount] = useState(0);
-    const [currentSession, setCurrentSession] = useState('00h 00m');
 
     const loadStats = useCallback(async () => {
         try {
@@ -41,6 +40,8 @@ export default function SummaryCards({ refreshKey }: { refreshKey: number }) {
         const interval = setInterval(loadStats, 15000);
         return () => clearInterval(interval);
     }, [loadStats, refreshKey]);
+
+    const currentSession = formatHours(currentSessionSeconds);
 
     return (
         <div className="summary-cards">

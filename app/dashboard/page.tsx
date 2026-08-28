@@ -12,6 +12,7 @@ export default function DashboardPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
     const [refreshKey, setRefreshKey] = useState(0);
+    const [currentSessionSeconds, setCurrentSessionSeconds] = useState(0);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -23,16 +24,20 @@ export default function DashboardPage() {
         setRefreshKey(k => k + 1);
     }, []);
 
+    const onSessionUpdate = useCallback((seconds: number) => {
+        setCurrentSessionSeconds(seconds);
+    }, []);
+
     if (loading || !user) return null;
 
     return (
         <>
             <Header />
             <div className="main-container">
-                <SummaryCards refreshKey={refreshKey} />
+                <SummaryCards refreshKey={refreshKey} currentSessionSeconds={currentSessionSeconds} />
                 <div className="dashboard-grid" style={{ marginTop: 24 }}>
                     <div className="left-panel">
-                        <TimerCard onTaskSaved={onTaskSaved} />
+                        <TimerCard onTaskSaved={onTaskSaved} onSessionUpdate={onSessionUpdate} />
                     </div>
                     <ActivityPanel refreshKey={refreshKey} />
                 </div>
