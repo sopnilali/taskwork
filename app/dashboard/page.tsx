@@ -29,10 +29,10 @@ export default function DashboardPage() {
         <>
             <Header />
             <div className="main-container">
-                <div className="dashboard-grid">
+                <SummaryCards refreshKey={refreshKey} />
+                <div className="dashboard-grid" style={{ marginTop: 24 }}>
                     <div className="left-panel">
                         <TimerCard onTaskSaved={onTaskSaved} />
-                        <SummaryCards refreshKey={refreshKey} />
                     </div>
                     <ActivityPanel refreshKey={refreshKey} />
                 </div>

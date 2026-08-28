@@ -46,6 +46,7 @@ export default function TimerCard({ onTaskSaved }: { onTaskSaved: () => void }) 
     const [display, setDisplay] = useState('00:00:00');
     const [currentSession, setCurrentSession] = useState('00h 00m');
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const timerRef = useRef<ActiveTimer | null>(null);
 
     const saveActiveTimer = useCallback((timer: ActiveTimer | null) => {
         if (timer) {
@@ -76,10 +77,16 @@ export default function TimerCard({ onTaskSaved }: { onTaskSaved: () => void }) 
         setCurrentSession(formatDurationShortLong(elapsed));
     }, []);
 
-    const startInterval = useCallback((timer: ActiveTimer) => {
+    const startInterval = useCallback(() => {
         stopInterval();
-        intervalRef.current = setInterval(() => updateDisplay(timer), 1000);
-    }, [updateDisplay]);
+        intervalRef.current = setInterval(() => {
+            const t = timerRef.current;
+            if (!t) return;
+            const elapsed = getElapsedSeconds(t);
+            setDisplay(formatTime(elapsed));
+            setCurrentSession(formatDurationShortLong(elapsed));
+        }, 1000);
+    }, []);
 
     function stopInterval() {
         if (intervalRef.current) {
@@ -101,8 +108,9 @@ export default function TimerCard({ onTaskSaved }: { onTaskSaved: () => void }) 
             paused_at: null,
         };
         setActiveTimer(timer);
+        timerRef.current = timer;
         saveActiveTimer(timer);
-        startInterval(timer);
+        startInterval();
     };
 
     const pauseTimer = () => {
@@ -116,6 +124,7 @@ export default function TimerCard({ onTaskSaved }: { onTaskSaved: () => void }) 
             status: 'paused' as const,
         };
         setActiveTimer(updated);
+        timerRef.current = updated;
         saveActiveTimer(updated);
         stopInterval();
         updateDisplay(updated);
@@ -130,8 +139,9 @@ export default function TimerCard({ onTaskSaved }: { onTaskSaved: () => void }) 
             status: 'running' as const,
         };
         setActiveTimer(updated);
+        timerRef.current = updated;
         saveActiveTimer(updated);
-        startInterval(updated);
+        startInterval();
     };
 
     const stopTimer = () => {
@@ -153,6 +163,7 @@ export default function TimerCard({ onTaskSaved }: { onTaskSaved: () => void }) 
         };
 
         setActiveTimer(null);
+        timerRef.current = null;
         saveActiveTimer(null);
         setDisplay('00:00:00');
 
@@ -168,6 +179,7 @@ export default function TimerCard({ onTaskSaved }: { onTaskSaved: () => void }) 
     const resetTimer = () => {
         stopInterval();
         setActiveTimer(null);
+        timerRef.current = null;
         saveActiveTimer(null);
         setDisplay('00:00:00');
         setTaskName('');
@@ -185,14 +197,15 @@ export default function TimerCard({ onTaskSaved }: { onTaskSaved: () => void }) 
             updated = { ...activeTimer, last_resumed_at: activeTimer.last_resumed_at! - seconds * 1000 };
         }
         setActiveTimer(updated);
+        timerRef.current = updated;
         saveActiveTimer(updated);
-        updateDisplay(updated);
     };
 
     useEffect(() => {
         const saved = loadActiveTimer();
         if (saved) {
             setActiveTimer(saved);
+            timerRef.current = saved;
             setTaskName(saved.task_name);
             setCategory(saved.category);
             setHourlyRate(saved.hourly_rate || 0);
@@ -200,8 +213,9 @@ export default function TimerCard({ onTaskSaved }: { onTaskSaved: () => void }) 
                 const elapsed = getElapsedSeconds(saved);
                 saved.accumulated_duration = elapsed;
                 saved.last_resumed_at = Date.now();
+                timerRef.current = saved;
                 saveActiveTimer(saved);
-                startInterval(saved);
+                startInterval();
             }
             updateDisplay(saved);
         }

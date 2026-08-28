@@ -49,6 +49,15 @@ export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
         }
     };
 
+    const deleteTask = async (id: number) => {
+        try {
+            await authFetch(`/api/tasks/${id}`, { method: 'DELETE' });
+            setTasks(prev => prev.filter(t => t.id !== id));
+        } catch (err) {
+            console.error('Failed to delete task:', err);
+        }
+    };
+
     useEffect(() => {
         loadActivityLog();
         const interval = setInterval(loadActivityLog, 15000);
@@ -90,7 +99,7 @@ export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
                                 <div className="empty-text">Start your first task to track your time</div>
                             </div>
                         ) : (
-                            tasks.map(task => <ActivityItem key={task.id} task={task} />)
+                            tasks.map(task => <ActivityItem key={task.id} task={task} onDelete={deleteTask} />)
                         )}
                     </div>
                 </div>

@@ -405,6 +405,31 @@ body {
   gap: 16px;
 }
 
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stats-section-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gray-400);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 10px;
+}
+
+.stats-row {
+  display: flex;
+  gap: 12px;
+}
+
+.stats-row .summary-card {
+  flex: 1;
+}
+
 .summary-card {
   background: white;
   border-radius: var(--radius);
@@ -580,6 +605,81 @@ body {
 .activity-item:hover {
   border-color: var(--gray-200);
   box-shadow: var(--shadow-sm);
+}
+
+.btn-delete-task {
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  border: none;
+  background: transparent;
+  color: var(--gray-400);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  transition: all 0.15s;
+  padding: 0;
+}
+
+.btn-delete-task:hover {
+  background: var(--danger-light);
+  color: var(--danger);
+}
+
+.delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--danger-light);
+  border: 1px solid var(--danger);
+  border-radius: 8px;
+  padding: 3px 6px;
+  animation: fadeIn 0.15s ease;
+}
+
+.delete-confirm-text {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--danger);
+  margin-right: 2px;
+}
+
+.delete-confirm-yes,
+.delete-confirm-no {
+  border: none;
+  border-radius: 5px;
+  padding: 2px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: var(--font-inter), sans-serif;
+  transition: all 0.15s;
+}
+
+.delete-confirm-yes {
+  background: var(--danger);
+  color: white;
+}
+
+.delete-confirm-yes:hover {
+  background: #dc2626;
+}
+
+.delete-confirm-no {
+  background: white;
+  color: var(--gray-600);
+  border: 1px solid var(--gray-300);
+}
+
+.delete-confirm-no:hover {
+  background: var(--gray-100);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 .activity-item-header {
@@ -907,6 +1007,10 @@ body {
 
   .summary-cards {
     grid-template-columns: repeat(2, 1fr);
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
   }
 
   .timer-controls {

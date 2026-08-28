@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 interface Task {
     id: number;
     task_name: string;
@@ -24,7 +26,8 @@ function escapeHtml(text: string): string {
     return div.innerHTML;
 }
 
-export default function ActivityItem({ task }: { task: Task }) {
+export default function ActivityItem({ task, onDelete }: { task: Task; onDelete: (id: number) => void }) {
+    const [confirmDelete, setConfirmDelete] = useState(false);
     const started = new Date(task.started_at);
     const ended = new Date(task.ended_at);
     const startTime = started.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -38,7 +41,24 @@ export default function ActivityItem({ task }: { task: Task }) {
         <div className="activity-item">
             <div className="activity-item-header">
                 <div className="activity-task-name" dangerouslySetInnerHTML={{ __html: escapeHtml(task.task_name) }} />
-                <span className={`activity-status-badge ${badgeClass}`}>{statusLabel}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span className={`activity-status-badge ${badgeClass}`}>{statusLabel}</span>
+                    {confirmDelete ? (
+                        <div className="delete-confirm">
+                            <span className="delete-confirm-text">Delete?</span>
+                            <button className="delete-confirm-yes" onClick={() => onDelete(task.id)}>Yes</button>
+                            <button className="delete-confirm-no" onClick={() => setConfirmDelete(false)}>No</button>
+                        </div>
+                    ) : (
+                        <button
+                            className="btn-delete-task"
+                            title="Delete task"
+                            onClick={() => setConfirmDelete(true)}
+                        >
+                            <i className="fas fa-times"></i>
+                        </button>
+                    )}
+                </div>
             </div>
             <div className="activity-category" dangerouslySetInnerHTML={{ __html: escapeHtml(task.category) }} />
             <div className="activity-times">
