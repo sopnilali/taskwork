@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, queryAll, queryOne, runQuery } from '@/lib/db';
+import { sql, initDatabase } from '@/lib/db';
 import { authenticate, authResponse } from '@/lib/auth';
+
+let initialized = false;
 
 export async function GET(req: NextRequest) {
     try {
-        await getDb();
+        if (!initialized) {
+            await initDatabase();
+            initialized = true;
+        }
+
         const user = authenticate(req);
         if (!user) return authResponse();
 
@@ -12,26 +18,26 @@ export async function GET(req: NextRequest) {
         const filter = searchParams.get('filter');
         const category = searchParams.get('category');
         const userId = user.id;
-        let tasks;
 
+        let tasks;
         if (category) {
-            tasks = queryAll('SELECT * FROM tasks WHERE user_id = ? AND category = ? ORDER BY created_at DESC', [userId, category]);
+            tasks = await sql`SELECT * FROM tasks WHERE user_id = ${userId} AND category = ${category} ORDER BY created_at DESC`;
         } else {
             switch (filter) {
                 case 'today':
-                    tasks = queryAll("SELECT * FROM tasks WHERE user_id = ? AND date(created_at) = date('now') ORDER BY created_at DESC", [userId]);
+                    tasks = await sql`SELECT * FROM tasks WHERE user_id = ${userId} AND date(created_at) = date('now') ORDER BY created_at DESC`;
                     break;
                 case 'week':
-                    tasks = queryAll("SELECT * FROM tasks WHERE user_id = ? AND created_at >= datetime('now', '-7 days') ORDER BY created_at DESC", [userId]);
+                    tasks = await sql`SELECT * FROM tasks WHERE user_id = ${userId} AND created_at >= (now() - interval '7 days') ORDER BY created_at DESC`;
                     break;
                 case 'completed':
-                    tasks = queryAll("SELECT * FROM tasks WHERE user_id = ? AND status = 'completed' ORDER BY created_at DESC", [userId]);
+                    tasks = await sql`SELECT * FROM tasks WHERE user_id = ${userId} AND status = 'completed' ORDER BY created_at DESC`;
                     break;
                 case 'stopped':
-                    tasks = queryAll("SELECT * FROM tasks WHERE user_id = ? AND status = 'stopped' ORDER BY created_at DESC", [userId]);
+                    tasks = await sql`SELECT * FROM tasks WHERE user_id = ${userId} AND status = 'stopped' ORDER BY created_at DESC`;
                     break;
                 default:
-                    tasks = queryAll('SELECT * FROM tasks WHERE user_id = ? ORDER BY created_at DESC', [userId]);
+                    tasks = await sql`SELECT * FROM tasks WHERE user_id = ${userId} ORDER BY created_at DESC`;
             }
         }
 
@@ -44,7 +50,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        await getDb();
+        if (!initialized) {
+            await initDatabase();
+            initialized = true;
+        }
+
         const user = authenticate(req);
         if (!user) return authResponse();
 
@@ -56,19 +66,19 @@ export async function POST(req: NextRequest) {
 
         const rate = hourly_rate || 0;
 
-        runQuery(
-            'INSERT INTO tasks (user_id, task_name, category, status, started_at, ended_at, total_duration, hourly_rate) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [user.id, task_name, category, status, started_at, ended_at, total_duration, rate]
-        );
+        const result = await sql`
+            INSERT INTO tasks (user_id, task_name, category, status, started_at, ended_at, total_duration, hourly_rate)
+            VALUES (${user.id}, ${task_name}, ${category}, ${status}, ${started_at}, ${ended_at}, ${total_duration}, ${rate})
+            RETURNING *
+        `;
 
-        const taskId = (queryOne('SELECT last_insert_rowid() as id') as Record<string, unknown>)?.id;
+        const task = result[0];
 
-        runQuery(
-            'INSERT INTO activity_logs (task_id, activity_type, activity_time, duration) VALUES (?, ?, ?, ?)',
-            [taskId, 'task_stopped', ended_at, total_duration]
-        );
+        await sql`
+            INSERT INTO activity_logs (task_id, activity_type, activity_time, duration)
+            VALUES (${task.id}, 'task_stopped', ${ended_at}, ${total_duration})
+        `;
 
-        const task = queryOne('SELECT * FROM tasks WHERE id = ?', [taskId as number]);
         return NextResponse.json(task, { status: 201 });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
@@ -78,12 +88,16 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
     try {
-        await getDb();
+        if (!initialized) {
+            await initDatabase();
+            initialized = true;
+        }
+
         const user = authenticate(req);
         if (!user) return authResponse();
 
-        runQuery('DELETE FROM activity_logs WHERE task_id IN (SELECT id FROM tasks WHERE user_id = ?)', [user.id]);
-        runQuery('DELETE FROM tasks WHERE user_id = ?', [user.id]);
+        await sql`DELETE FROM activity_logs WHERE task_id IN (SELECT id FROM tasks WHERE user_id = ${user.id})`;
+        await sql`DELETE FROM tasks WHERE user_id = ${user.id}`;
         return NextResponse.json({ message: 'All tasks and activity logs cleared' });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';

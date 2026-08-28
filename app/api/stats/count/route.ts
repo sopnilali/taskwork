@@ -1,15 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDb, queryOne } from '@/lib/db';
+import { sql, initDatabase } from '@/lib/db';
 import { authenticate, authResponse } from '@/lib/auth';
+
+let initialized = false;
 
 export async function GET(req: NextRequest) {
     try {
-        await getDb();
+        if (!initialized) {
+            await initDatabase();
+            initialized = true;
+        }
+
         const user = authenticate(req);
         if (!user) return authResponse();
 
-        const result = queryOne('SELECT COUNT(*) as count FROM tasks WHERE user_id = ?', [user.id]) as Record<string, unknown>;
-        return NextResponse.json({ count: result.count });
+        const result = await sql`SELECT COUNT(*) as count FROM tasks WHERE user_id = ${user.id}`;
+        return NextResponse.json({ count: result[0].count });
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json({ error: message }, { status: 500 });
