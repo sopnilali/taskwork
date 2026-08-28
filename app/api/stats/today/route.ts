@@ -2,35 +2,29 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql, initDatabase } from '@/lib/db';
 import { authenticate, authResponse } from '@/lib/auth';
 
-let initialized = false;
-
 export async function GET(req: NextRequest) {
     try {
-        if (!initialized) {
-            await initDatabase();
-            initialized = true;
-        }
-
+        await initDatabase();
         const user = authenticate(req);
         if (!user) return authResponse();
 
         const today = await sql`
-            SELECT COALESCE(SUM(total_duration), 0) as total, COALESCE(SUM(total_duration * hourly_rate / 3600), 0) as earnings, COUNT(*) as count
+            SELECT COALESCE(SUM(total_duration), 0)::int as total, COALESCE(SUM(total_duration * hourly_rate / 3600), 0)::int as earnings, COUNT(*)::int as count
             FROM tasks WHERE user_id = ${user.id} AND date(created_at) = date('now')
         `;
 
         const week = await sql`
-            SELECT COALESCE(SUM(total_duration), 0) as total, COALESCE(SUM(total_duration * hourly_rate / 3600), 0) as earnings, COUNT(*) as count
+            SELECT COALESCE(SUM(total_duration), 0)::int as total, COALESCE(SUM(total_duration * hourly_rate / 3600), 0)::int as earnings, COUNT(*)::int as count
             FROM tasks WHERE user_id = ${user.id} AND created_at >= (now() - interval '7 days')
         `;
 
         const month = await sql`
-            SELECT COALESCE(SUM(total_duration), 0) as total, COALESCE(SUM(total_duration * hourly_rate / 3600), 0) as earnings, COUNT(*) as count
+            SELECT COALESCE(SUM(total_duration), 0)::int as total, COALESCE(SUM(total_duration * hourly_rate / 3600), 0)::int as earnings, COUNT(*)::int as count
             FROM tasks WHERE user_id = ${user.id} AND created_at >= (now() - interval '30 days')
         `;
 
         const total = await sql`
-            SELECT COALESCE(SUM(total_duration * hourly_rate / 3600), 0) as earnings
+            SELECT COALESCE(SUM(total_duration * hourly_rate / 3600), 0)::int as earnings
             FROM tasks WHERE user_id = ${user.id}
         `;
 

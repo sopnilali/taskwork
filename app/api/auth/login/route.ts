@@ -3,15 +3,9 @@ import bcrypt from 'bcryptjs';
 import { sql, initDatabase } from '@/lib/db';
 import { signToken } from '@/lib/auth';
 
-let initialized = false;
-
 export async function POST(req: NextRequest) {
     try {
-        if (!initialized) {
-            await initDatabase();
-            initialized = true;
-        }
-
+        await initDatabase();
         const { username, password } = await req.json();
 
         if (!username || !password) {

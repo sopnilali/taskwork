@@ -34,18 +34,23 @@ export default function SummaryCards({ refreshKey }: { refreshKey: number }) {
             const stats = await statsRes.json();
             const countData = await countRes.json();
 
-            setTodayCount(stats.today.count || 0);
-            setTodayHours(formatDurationShortLong(stats.today.totalDuration));
-            setTodayEarnings(Math.round(stats.today.totalEarnings || 0));
+            if (stats.error) {
+                console.error('Stats error:', stats.error);
+                return;
+            }
 
-            setWeekCount(stats.week.count || 0);
-            setWeekEarnings(Math.round(stats.week.totalEarnings || 0));
+            setTodayCount(Number(stats.today?.count) || 0);
+            setTodayHours(formatDurationShortLong(Number(stats.today?.totalDuration) || 0));
+            setTodayEarnings(Math.round(Number(stats.today?.totalEarnings) || 0));
 
-            setMonthCount(stats.month.count || 0);
-            setMonthEarnings(Math.round(stats.month.totalEarnings || 0));
+            setWeekCount(Number(stats.week?.count) || 0);
+            setWeekEarnings(Math.round(Number(stats.week?.totalEarnings) || 0));
 
-            setTotalCount(countData.count || 0);
-            setTotalEarnings(Math.round(stats.total?.totalEarnings || 0));
+            setMonthCount(Number(stats.month?.count) || 0);
+            setMonthEarnings(Math.round(Number(stats.month?.totalEarnings) || 0));
+
+            setTotalCount(Number(countData.count) || 0);
+            setTotalEarnings(Math.round(Number(stats.total?.totalEarnings) || 0));
         } catch (err) {
             console.error('Failed to load stats:', err);
         }

@@ -2,15 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql, initDatabase } from '@/lib/db';
 import { authenticate, authResponse } from '@/lib/auth';
 
-let initialized = false;
-
 export async function GET(req: NextRequest) {
     try {
-        if (!initialized) {
-            await initDatabase();
-            initialized = true;
-        }
-
+        await initDatabase();
         const user = authenticate(req);
         if (!user) return authResponse();
 

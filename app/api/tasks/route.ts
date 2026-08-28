@@ -2,15 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql, initDatabase } from '@/lib/db';
 import { authenticate, authResponse } from '@/lib/auth';
 
-let initialized = false;
-
 export async function GET(req: NextRequest) {
     try {
-        if (!initialized) {
-            await initDatabase();
-            initialized = true;
-        }
-
+        await initDatabase();
         const user = authenticate(req);
         if (!user) return authResponse();
 
@@ -50,11 +44,7 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
     try {
-        if (!initialized) {
-            await initDatabase();
-            initialized = true;
-        }
-
+        await initDatabase();
         const user = authenticate(req);
         if (!user) return authResponse();
 
@@ -88,11 +78,7 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
     try {
-        if (!initialized) {
-            await initDatabase();
-            initialized = true;
-        }
-
+        await initDatabase();
         const user = authenticate(req);
         if (!user) return authResponse();
 

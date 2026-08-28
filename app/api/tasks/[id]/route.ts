@@ -2,15 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { sql, initDatabase } from '@/lib/db';
 import { authenticate, authResponse } from '@/lib/auth';
 
-let initialized = false;
-
 export async function GET(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
-        if (!initialized) {
-            await initDatabase();
-            initialized = true;
-        }
-
+        await initDatabase();
         const user = authenticate(req);
         if (!user) return authResponse();
 
@@ -28,11 +22,7 @@ export async function GET(req: NextRequest, context: { params: Promise<{ id: str
 
 export async function DELETE(req: NextRequest, context: { params: Promise<{ id: string }> }) {
     try {
-        if (!initialized) {
-            await initDatabase();
-            initialized = true;
-        }
-
+        await initDatabase();
         const user = authenticate(req);
         if (!user) return authResponse();
 
