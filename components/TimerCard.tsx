@@ -45,8 +45,12 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
     const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
     const [display, setDisplay] = useState('00:00:00');
     const [currentSession, setCurrentSession] = useState('00h 00m');
+    const [taskNameError, setTaskNameError] = useState(false);
+    const [showCustomModal, setShowCustomModal] = useState(false);
+    const [customMinutes, setCustomMinutes] = useState(10);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const timerRef = useRef<ActiveTimer | null>(null);
+    const taskNameRef = useRef<HTMLInputElement>(null);
 
     const saveActiveTimer = useCallback((timer: ActiveTimer | null) => {
         if (timer) {
@@ -99,7 +103,12 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
     }
 
     const startTimer = () => {
-        if (!taskName.trim()) return;
+        if (!taskName.trim()) {
+            setTaskNameError(true);
+            taskNameRef.current?.focus();
+            setTimeout(() => setTaskNameError(false), 2000);
+            return;
+        }
         const timer: ActiveTimer = {
             task_name: taskName.trim(),
             category,
@@ -229,6 +238,9 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
     const isPaused = activeTimer?.status === 'paused';
     const timerActive = activeTimer !== null;
 
+    const statusText = isRunning ? 'Running' : isPaused ? 'Paused' : 'Ready';
+    const statusClass = isRunning ? 'running' : isPaused ? 'paused' : 'ready';
+
     return (
         <div className="card" style={{ marginBottom: 24 }}>
             <div className="card-body">
@@ -237,13 +249,15 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
                     <div className="col-md-5">
                         <label className="form-label">Task Name</label>
                         <input
+                            ref={taskNameRef}
                             type="text"
                             className="form-control"
                             placeholder="What are you working on?"
                             maxLength={100}
                             value={taskName}
-                            onChange={e => setTaskName(e.target.value)}
+                            onChange={e => { setTaskName(e.target.value); setTaskNameError(false); }}
                             onKeyDown={e => { if (e.key === 'Enter' && !timerActive) startTimer(); }}
+                            style={taskNameError ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.2)' } : {}}
                         />
                     </div>
                     <div className="col-md-3">
@@ -267,10 +281,8 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
                 </div>
 
                 <div className="timer-status">
-                    <div className={`status-dot ${isRunning ? 'running' : isPaused ? 'paused' : 'ready'}`}></div>
-                    <span className={`status-text ${isRunning ? 'running' : isPaused ? 'paused' : ''}`}>
-                        {isRunning ? 'Running' : isPaused ? 'Paused' : 'Ready'}
-                    </span>
+                    <div className={`status-dot ${statusClass}`}></div>
+                    <span className={`status-text ${statusClass}`}>{statusText}</span>
                 </div>
 
                 <div className="timer-display">
@@ -313,15 +325,41 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
                     <button className="btn-quick" disabled={!timerActive} onClick={() => addTime(5)}>+5 min</button>
                     <button className="btn-quick" disabled={!timerActive} onClick={() => addTime(15)}>+15 min</button>
                     <button className="btn-quick" disabled={!timerActive} onClick={() => addTime(30)}>+30 min</button>
-                    <button className="btn-quick" disabled={!timerActive} onClick={() => {
-                        const mins = prompt('Enter minutes to add (1-480):');
-                        if (mins) {
-                            const m = parseInt(mins);
-                            if (m > 0 && m <= 480) addTime(m);
-                        }
-                    }}>Custom</button>
+                    <button className="btn-quick" disabled={!timerActive} onClick={() => { setCustomMinutes(10); setShowCustomModal(true); }}>Custom</button>
                 </div>
             </div>
+
+            {showCustomModal && (
+                <div style={{
+                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+                    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+                }}>
+                    <div style={{ background: '#fff', borderRadius: 12, padding: 24, maxWidth: 340, width: '90%' }}>
+                        <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>
+                            <i className="fas fa-clock" style={{ marginRight: 8, color: 'var(--primary)' }}></i>
+                            Add Custom Time
+                        </h3>
+                        <label className="form-label" style={{ fontSize: 12 }}>Minutes (1-480)</label>
+                        <input
+                            type="number"
+                            className="form-control"
+                            min={1}
+                            max={480}
+                            value={customMinutes}
+                            onChange={e => setCustomMinutes(parseInt(e.target.value) || 0)}
+                            onKeyDown={e => { if (e.key === 'Enter') { if (customMinutes > 0 && customMinutes <= 480) { addTime(customMinutes); setShowCustomModal(false); } } }}
+                            autoFocus
+                        />
+                        <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
+                            <button className="btn-activity btn-clear" onClick={() => setShowCustomModal(false)}>Cancel</button>
+                            <button className="btn-activity" style={{ background: 'var(--primary)', color: '#fff' }}
+                                onClick={() => { if (customMinutes > 0 && customMinutes <= 480) { addTime(customMinutes); setShowCustomModal(false); } }}>
+                                Add Time
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

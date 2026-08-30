@@ -44,6 +44,7 @@ interface ActivityLog {
 interface GlobalStats {
     totalUsers: number;
     totalTasks: number;
+    filtered: { count: number; seconds: number; earnings: number };
     today: { count: number; seconds: number; earnings: number };
     week: { count: number; seconds: number; earnings: number };
     allTime: { count: number; seconds: number; earnings: number };
@@ -97,6 +98,7 @@ export default function AdminPage() {
     const [tab, setTab] = useState<'stats' | 'users' | 'tasks' | 'activity'>('stats');
 
     const [stats, setStats] = useState<GlobalStats | null>(null);
+    const [statsRange, setStatsRange] = useState('all');
     const [users, setUsers] = useState<AdminUser[]>([]);
     const [tasks, setTasks] = useState<AdminTask[]>([]);
     const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -129,8 +131,11 @@ export default function AdminPage() {
     const showToast = (msg: string) => { setToast(msg); setTimeout(() => setToast(''), 3000); };
 
     const loadStats = useCallback(async () => {
-        try { const res = await authFetch('/api/admin/stats'); setStats(await res.json()); } catch {}
-    }, [authFetch]);
+        try {
+            const res = await authFetch(`/api/admin/stats?range=${statsRange}`);
+            setStats(await res.json());
+        } catch {}
+    }, [authFetch, statsRange]);
 
     const loadUsers = useCallback(async () => {
         try { const res = await authFetch('/api/admin/users'); const d = await res.json(); setUsers(d.users || []); } catch {}
@@ -267,30 +272,74 @@ export default function AdminPage() {
                 </div>
 
                 {tab === 'stats' && stats && (
-                    <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-                        <div className="summary-card">
-                            <div className="summary-icon tasks"><i className="fas fa-users"></i></div>
-                            <div className="summary-label">Total Users</div>
-                            <div className="summary-value">{stats.totalUsers}</div>
+                    <>
+                        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+                            {[
+                                { value: 'today', label: 'Today' },
+                                { value: 'week', label: 'This Week' },
+                                { value: 'month', label: 'This Month' },
+                                { value: 'all', label: 'All Time' },
+                            ].map(opt => (
+                                <button key={opt.value}
+                                    className="btn-activity"
+                                    style={statsRange === opt.value
+                                        ? { background: 'var(--primary)', color: '#fff', padding: '6px 16px', fontSize: 13 }
+                                        : { padding: '6px 16px', fontSize: 13 }}
+                                    onClick={() => setStatsRange(opt.value)}>
+                                    {opt.label}
+                                </button>
+                            ))}
                         </div>
-                        <div className="summary-card">
-                            <div className="summary-icon time"><i className="fas fa-list-check"></i></div>
-                            <div className="summary-label">Total Tasks</div>
-                            <div className="summary-value">{stats.totalTasks}</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
+                            <div className="summary-card">
+                                <div className="summary-icon tasks"><i className="fas fa-users"></i></div>
+                                <div className="summary-label">Total Users</div>
+                                <div className="summary-value">{stats.totalUsers}</div>
+                            </div>
+                            <div className="summary-card">
+                                <div className="summary-icon time"><i className="fas fa-list-check"></i></div>
+                                <div className="summary-label">Total Tasks</div>
+                                <div className="summary-value">{stats.totalTasks}</div>
+                            </div>
+                            <div className="summary-card">
+                                <div className="summary-icon session"><i className="fas fa-clock"></i></div>
+                                <div className="summary-label">
+                                    {statsRange === 'today' ? "Today" : statsRange === 'week' ? "This Week" : statsRange === 'month' ? "This Month" : "All Time"} — Tasks & Hours
+                                </div>
+                                <div className="summary-value">{stats.filtered.count} tasks</div>
+                                <div className="summary-label" style={{ marginTop: 4 }}>{fmtDur(stats.filtered.seconds)}</div>
+                            </div>
+                            <div className="summary-card">
+                                <div className="summary-icon earnings"><i className="fas fa-bangladeshi-taka-sign"></i></div>
+                                <div className="summary-label">
+                                    {statsRange === 'today' ? "Today" : statsRange === 'week' ? "This Week" : statsRange === 'month' ? "This Month" : "All Time"} — Earnings
+                                </div>
+                                <div className="summary-value">৳{stats.filtered.earnings}</div>
+                                <div className="summary-label" style={{ marginTop: 4 }}>{fmtDur(stats.filtered.seconds)}</div>
+                            </div>
                         </div>
-                        <div className="summary-card">
-                            <div className="summary-icon session"><i className="fas fa-clock"></i></div>
-                            <div className="summary-label">This Week</div>
-                            <div className="summary-value">{stats.week.count} tasks</div>
-                            <div className="summary-label" style={{ marginTop: 4 }}>{fmtDur(stats.week.seconds)} / ৳{stats.week.earnings}</div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginTop: 16 }}>
+                            <div className="summary-card">
+                                <div className="summary-icon session"><i className="fas fa-calendar-day"></i></div>
+                                <div className="summary-label">Today</div>
+                                <div className="summary-value">{stats.today.count} tasks</div>
+                                <div className="summary-label" style={{ marginTop: 4 }}>{fmtDur(stats.today.seconds)} / ৳{stats.today.earnings}</div>
+                            </div>
+                            <div className="summary-card">
+                                <div className="summary-icon time"><i className="fas fa-calendar-week"></i></div>
+                                <div className="summary-label">This Week</div>
+                                <div className="summary-value">{stats.week.count} tasks</div>
+                                <div className="summary-label" style={{ marginTop: 4 }}>{fmtDur(stats.week.seconds)} / ৳{stats.week.earnings}</div>
+                            </div>
+                            <div className="summary-card">
+                                <div className="summary-icon earnings"><i className="fas fa-chart-line"></i></div>
+                                <div className="summary-label">All Time</div>
+                                <div className="summary-value">৳{stats.allTime.earnings}</div>
+                                <div className="summary-label" style={{ marginTop: 4 }}>{stats.allTime.count} tasks / {fmtDur(stats.allTime.seconds)}</div>
+                            </div>
                         </div>
-                        <div className="summary-card">
-                            <div className="summary-icon earnings"><i className="fas fa-bangladeshi-taka-sign"></i></div>
-                            <div className="summary-label">All Time Earnings</div>
-                            <div className="summary-value">৳{stats.allTime.earnings}</div>
-                            <div className="summary-label" style={{ marginTop: 4 }}>{stats.allTime.count} tasks / {fmtDur(stats.allTime.seconds)}</div>
-                        </div>
-                    </div>
+                    </>
                 )}
 
                 {tab === 'users' && (

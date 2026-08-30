@@ -9,12 +9,20 @@ function formatHours(totalSeconds: number): string {
     return `${String(h).padStart(2, '0')}h ${String(m).padStart(2, '0')}m`;
 }
 
+interface StatsData {
+    totalDuration: number;
+    totalEarnings: number;
+    count: number;
+}
+
 export default function SummaryCards({ refreshKey, currentSessionSeconds }: { refreshKey: number; currentSessionSeconds: number }) {
     const { authFetch } = useAuth();
+    const [range, setRange] = useState<'today' | 'week' | 'month' | 'all'>('today');
 
-    const [todayTotal, setTodayTotal] = useState('00h 00m');
-    const [todayEarnings, setTodayEarnings] = useState(0);
-    const [completedCount, setCompletedCount] = useState(0);
+    const [today, setToday] = useState<StatsData>({ totalDuration: 0, totalEarnings: 0, count: 0 });
+    const [week, setWeek] = useState<StatsData>({ totalDuration: 0, totalEarnings: 0, count: 0 });
+    const [month, setMonth] = useState<StatsData>({ totalDuration: 0, totalEarnings: 0, count: 0 });
+    const [allTime, setAllTime] = useState<StatsData>({ totalDuration: 0, totalEarnings: 0, count: 0 });
 
     const loadStats = useCallback(async () => {
         try {
@@ -27,9 +35,26 @@ export default function SummaryCards({ refreshKey, currentSessionSeconds }: { re
 
             if (stats.error) return;
 
-            setTodayTotal(formatHours(Number(stats.today?.totalDuration) || 0));
-            setTodayEarnings(Math.round(Number(stats.today?.totalEarnings) || 0));
-            setCompletedCount(Number(stats.today?.count) || 0);
+            setToday({
+                totalDuration: Number(stats.today?.totalDuration) || 0,
+                totalEarnings: Math.round(Number(stats.today?.totalEarnings) || 0),
+                count: Number(stats.today?.count) || 0,
+            });
+            setWeek({
+                totalDuration: Number(stats.week?.totalDuration) || 0,
+                totalEarnings: Math.round(Number(stats.week?.totalEarnings) || 0),
+                count: Number(stats.week?.count) || 0,
+            });
+            setMonth({
+                totalDuration: Number(stats.month?.totalDuration) || 0,
+                totalEarnings: Math.round(Number(stats.month?.totalEarnings) || 0),
+                count: Number(stats.month?.count) || 0,
+            });
+            setAllTime({
+                totalDuration: 0,
+                totalEarnings: Math.round(Number(stats.total?.totalEarnings) || 0),
+                count: Number(countData.count) || 0,
+            });
         } catch (err) {
             console.error('Failed to load stats:', err);
         }
@@ -41,37 +66,57 @@ export default function SummaryCards({ refreshKey, currentSessionSeconds }: { re
         return () => clearInterval(interval);
     }, [loadStats, refreshKey]);
 
-    const currentSession = formatHours(currentSessionSeconds);
+    const active = range === 'today' ? today : range === 'week' ? week : range === 'month' ? month : allTime;
+    const rangeLabel = range === 'today' ? "Today" : range === 'week' ? "This Week" : range === 'month' ? "This Month" : "All Time";
 
     return (
-        <div className="summary-cards">
-            <div className="summary-card">
-                <div className="summary-icon time">
-                    <i className="fas fa-clock"></i>
-                </div>
-                <div className="summary-label">Today&apos;s Total</div>
-                <div className="summary-value">{todayTotal}</div>
+        <div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+                {([
+                    { key: 'today', label: 'Today' },
+                    { key: 'week', label: 'Weekly' },
+                    { key: 'month', label: 'Monthly' },
+                    { key: 'all', label: 'All Time' },
+                ] as const).map(opt => (
+                    <button key={opt.key}
+                        className="btn-activity"
+                        style={range === opt.key
+                            ? { background: 'var(--primary)', color: '#fff', padding: '4px 14px', fontSize: 12 }
+                            : { padding: '4px 14px', fontSize: 12 }}
+                        onClick={() => setRange(opt.key)}>
+                        {opt.label}
+                    </button>
+                ))}
             </div>
-            <div className="summary-card">
-                <div className="summary-icon session">
-                    <i className="fas fa-play-circle"></i>
+            <div className="summary-cards">
+                <div className="summary-card">
+                    <div className="summary-icon tasks">
+                        <i className="fas fa-check-circle"></i>
+                    </div>
+                    <div className="summary-label">{rangeLabel} — Tasks</div>
+                    <div className="summary-value">{active.count}</div>
                 </div>
-                <div className="summary-label">Current Session</div>
-                <div className="summary-value">{currentSession}</div>
-            </div>
-            <div className="summary-card">
-                <div className="summary-icon tasks">
-                    <i className="fas fa-check-circle"></i>
+                <div className="summary-card">
+                    <div className="summary-icon time">
+                        <i className="fas fa-clock"></i>
+                    </div>
+                    <div className="summary-label">{rangeLabel} — Hours</div>
+                    <div className="summary-value">{formatHours(active.totalDuration)}</div>
                 </div>
-                <div className="summary-label">Completed Tasks</div>
-                <div className="summary-value">{completedCount}</div>
-            </div>
-            <div className="summary-card">
-                <div className="summary-icon earnings">
-                    <i className="fas fa-bangladeshi-taka-sign"></i>
+                <div className="summary-card">
+                    <div className="summary-icon earnings">
+                        <i className="fas fa-bangladeshi-taka-sign"></i>
+                    </div>
+                    <div className="summary-label">{rangeLabel} — Earnings</div>
+                    <div className="summary-value">৳{active.totalEarnings}</div>
                 </div>
-                <div className="summary-label">Today&apos;s Earnings</div>
-                <div className="summary-value">৳{todayEarnings}</div>
+                <div className="summary-card">
+                    <div className="summary-icon session">
+                        <i className="fas fa-play-circle"></i>
+                    </div>
+                    <div className="summary-label">Current Session</div>
+                    <div className="summary-value">{formatHours(currentSessionSeconds)}</div>
+                </div>
             </div>
         </div>
     );

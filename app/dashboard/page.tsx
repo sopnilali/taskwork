@@ -35,7 +35,7 @@ export default function DashboardPage() {
             <Header />
             <div className="main-container">
                 <SummaryCards refreshKey={refreshKey} currentSessionSeconds={currentSessionSeconds} />
-                <div className="dashboard-grid" style={{ marginTop: 24 }}>
+                <div className="dashboard-grid" style={{ marginTop: 16 }}>
                     <div className="left-panel">
                         <TimerCard onTaskSaved={onTaskSaved} onSessionUpdate={onSessionUpdate} />
                     </div>
