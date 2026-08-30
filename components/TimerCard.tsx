@@ -44,10 +44,10 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
     const [hourlyRate, setHourlyRate] = useState(0);
     const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
     const [display, setDisplay] = useState('00:00:00');
-    const [currentSession, setCurrentSession] = useState('00h 00m');
     const [taskNameError, setTaskNameError] = useState(false);
     const [showCustomModal, setShowCustomModal] = useState(false);
     const [customMinutes, setCustomMinutes] = useState(10);
+    const [mounted, setMounted] = useState(false);
     const intervalRef = useRef<NodeJS.Timeout | null>(null);
     const timerRef = useRef<ActiveTimer | null>(null);
     const taskNameRef = useRef<HTMLInputElement>(null);
@@ -73,13 +73,11 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
     const updateDisplay = useCallback((timer: ActiveTimer | null) => {
         if (!timer) {
             setDisplay('00:00:00');
-            setCurrentSession('00h 00m');
             onSessionUpdate?.(0);
             return;
         }
         const elapsed = getElapsedSeconds(timer);
         setDisplay(formatTime(elapsed));
-        setCurrentSession(formatDurationShortLong(elapsed));
         onSessionUpdate?.(elapsed);
     }, [onSessionUpdate]);
 
@@ -90,7 +88,6 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
             if (!t) return;
             const elapsed = getElapsedSeconds(t);
             setDisplay(formatTime(elapsed));
-            setCurrentSession(formatDurationShortLong(elapsed));
             onSessionUpdate?.(elapsed);
         }, 1000);
     }, [onSessionUpdate]);
@@ -231,6 +228,7 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
             }
             updateDisplay(saved);
         }
+        setMounted(true);
         return () => stopInterval();
     }, []);
 
@@ -238,123 +236,187 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
     const isPaused = activeTimer?.status === 'paused';
     const timerActive = activeTimer !== null;
 
-    const statusText = isRunning ? 'Running' : isPaused ? 'Paused' : 'Ready';
-    const statusClass = isRunning ? 'running' : isPaused ? 'paused' : 'ready';
+    if (!mounted) {
+        return (
+            <div className="timer-card">
+                <div className="timer-card-header">
+                    <div className="timer-card-title">
+                        <i className="fas fa-play-circle"></i>
+                        Current Task
+                    </div>
+                    <div className="timer-badge ready">
+                        <div className="timer-badge-dot ready"></div>
+                        Ready
+                    </div>
+                </div>
+                <div className="timer-card-body">
+                    <div className="timer-display-section">
+                        <div className="timer-digits">00:00:00</div>
+                        <div className="timer-label">Elapsed Time</div>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
-        <div className="card" style={{ marginBottom: 24 }}>
-            <div className="card-body">
-                <div className="section-title">Current Task</div>
-                <div className="row g-3">
-                    <div className="col-md-5">
-                        <label className="form-label">Task Name</label>
+        <div className="timer-card">
+            <div className="timer-card-header">
+                <div className="timer-card-title">
+                    <i className="fas fa-play-circle"></i>
+                    Current Task
+                </div>
+                {timerActive && (
+                    <div className={`timer-badge ${isRunning ? 'running' : 'paused'}`}>
+                        <div className={`timer-badge-dot ${isRunning ? 'running' : 'paused'}`}></div>
+                        {isRunning ? 'Running' : 'Paused'}
+                    </div>
+                )}
+                {!timerActive && (
+                    <div className="timer-badge ready">
+                        <div className="timer-badge-dot ready"></div>
+                        Ready
+                    </div>
+                )}
+            </div>
+
+            <div className="timer-card-body">
+                <div className="timer-inputs">
+                    <div className="timer-input-group" style={{ flex: 2 }}>
+                        <label className="timer-input-label">
+                            <i className="fas fa-pen"></i> Task Name
+                        </label>
                         <input
                             ref={taskNameRef}
                             type="text"
-                            className="form-control"
+                            className={`timer-input ${taskNameError ? 'error' : ''}`}
                             placeholder="What are you working on?"
                             maxLength={100}
                             value={taskName}
                             onChange={e => { setTaskName(e.target.value); setTaskNameError(false); }}
                             onKeyDown={e => { if (e.key === 'Enter' && !timerActive) startTimer(); }}
-                            style={taskNameError ? { borderColor: 'var(--danger)', boxShadow: '0 0 0 2px rgba(239,68,68,0.2)' } : {}}
+                            disabled={timerActive}
                         />
                     </div>
-                    <div className="col-md-3">
-                        <label className="form-label">Category</label>
-                        <select className="form-select" value={category} onChange={e => setCategory(e.target.value)}>
+                    <div className="timer-input-group" style={{ flex: 1 }}>
+                        <label className="timer-input-label">
+                            <i className="fas fa-tag"></i> Category
+                        </label>
+                        <select className="timer-input" value={category} onChange={e => setCategory(e.target.value)} disabled={timerActive}>
                             {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
                     </div>
-                    <div className="col-md-2">
-                        <label className="form-label">Hourly Rate</label>
+                    <div className="timer-input-group" style={{ flex: 1 }}>
+                        <label className="timer-input-label">
+                            <i className="fas fa-coins"></i> Rate
+                        </label>
                         <input
                             type="number"
-                            className="form-control"
+                            className="timer-input"
                             placeholder="৳/hr"
                             min={0}
                             step={50}
                             value={hourlyRate}
                             onChange={e => setHourlyRate(parseFloat(e.target.value) || 0)}
+                            disabled={timerActive}
                         />
                     </div>
                 </div>
 
-                <div className="timer-status">
-                    <div className={`status-dot ${statusClass}`}></div>
-                    <span className={`status-text ${statusClass}`}>{statusText}</span>
-                </div>
-
-                <div className="timer-display">
+                <div className="timer-display-section">
+                    <div className={`timer-glow ${isRunning ? 'running' : isPaused ? 'paused' : ''}`}></div>
                     <div className="timer-digits">{display}</div>
                     <div className="timer-label">Elapsed Time</div>
                 </div>
 
                 <div className="timer-controls">
                     {!timerActive && (
-                        <button className="btn-timer btn-start" title="Start Timer" onClick={startTimer}>
-                            <i className="fas fa-play" style={{ marginLeft: 2 }}></i>
+                        <button className="timer-btn start" title="Start Timer" onClick={startTimer}>
+                            <i className="fas fa-play"></i>
                         </button>
                     )}
                     {isRunning && (
                         <>
-                            <button className="btn-timer btn-pause" title="Pause Timer" onClick={pauseTimer}>
+                            <button className="timer-btn pause" title="Pause Timer" onClick={pauseTimer}>
                                 <i className="fas fa-pause"></i>
                             </button>
-                            <button className="btn-timer btn-stop" title="Stop Timer" onClick={stopTimer}>
+                            <button className="timer-btn stop" title="Stop Timer" onClick={stopTimer}>
                                 <i className="fas fa-stop"></i>
                             </button>
                         </>
                     )}
                     {isPaused && (
                         <>
-                            <button className="btn-timer btn-resume" title="Resume Timer" onClick={resumeTimer}>
-                                <i className="fas fa-play" style={{ marginLeft: 2 }}></i>
+                            <button className="timer-btn resume" title="Resume Timer" onClick={resumeTimer}>
+                                <i className="fas fa-play"></i>
                             </button>
-                            <button className="btn-timer btn-stop" title="Stop Timer" onClick={stopTimer}>
+                            <button className="timer-btn stop" title="Stop Timer" onClick={stopTimer}>
                                 <i className="fas fa-stop"></i>
                             </button>
                         </>
                     )}
-                    <button className="btn-timer btn-reset" title="Reset Timer" onClick={resetTimer}>
+                    <button className="timer-btn reset" title="Reset Timer" onClick={resetTimer}>
                         <i className="fas fa-redo-alt"></i>
                     </button>
                 </div>
 
-                <div className="quick-time-controls">
-                    <button className="btn-quick" disabled={!timerActive} onClick={() => addTime(5)}>+5 min</button>
-                    <button className="btn-quick" disabled={!timerActive} onClick={() => addTime(15)}>+15 min</button>
-                    <button className="btn-quick" disabled={!timerActive} onClick={() => addTime(30)}>+30 min</button>
-                    <button className="btn-quick" disabled={!timerActive} onClick={() => { setCustomMinutes(10); setShowCustomModal(true); }}>Custom</button>
+                <div className="timer-quick-controls">
+                    <button className="quick-btn" disabled={!timerActive} onClick={() => addTime(5)}>+5 min</button>
+                    <button className="quick-btn" disabled={!timerActive} onClick={() => addTime(15)}>+15 min</button>
+                    <button className="quick-btn" disabled={!timerActive} onClick={() => addTime(30)}>+30 min</button>
+                    <button className="quick-btn custom" disabled={!timerActive} onClick={() => { setCustomMinutes(10); setShowCustomModal(true); }}>
+                        <i className="fas fa-clock"></i> Custom
+                    </button>
                 </div>
+
+                {timerActive && (
+                    <div className="timer-task-info">
+                        <div className="task-info-item">
+                            <i className="fas fa-folder"></i>
+                            <span>{activeTimer?.category}</span>
+                        </div>
+                        {activeTimer?.hourly_rate ? (
+                            <div className="task-info-item">
+                                <i className="fas fa-coins"></i>
+                                <span>৳{activeTimer.hourly_rate}/hr</span>
+                            </div>
+                        ) : null}
+                        {activeTimer?.hourly_rate ? (
+                            <div className="task-info-item earnings">
+                                <i className="fas fa-bangladeshi-taka-sign"></i>
+                                <span>৳{Math.round(getElapsedSeconds(activeTimer) * activeTimer.hourly_rate / 3600)}</span>
+                            </div>
+                        ) : null}
+                    </div>
+                )}
             </div>
 
             {showCustomModal && (
-                <div style={{
-                    position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-                    background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000,
-                }}>
-                    <div style={{ background: '#fff', borderRadius: 12, padding: 24, maxWidth: 340, width: '90%' }}>
-                        <h3 style={{ margin: '0 0 12px', fontSize: 16, fontWeight: 700 }}>
-                            <i className="fas fa-clock" style={{ marginRight: 8, color: 'var(--primary)' }}></i>
-                            Add Custom Time
-                        </h3>
-                        <label className="form-label" style={{ fontSize: 12 }}>Minutes (1-480)</label>
-                        <input
-                            type="number"
-                            className="form-control"
-                            min={1}
-                            max={480}
-                            value={customMinutes}
-                            onChange={e => setCustomMinutes(parseInt(e.target.value) || 0)}
-                            onKeyDown={e => { if (e.key === 'Enter') { if (customMinutes > 0 && customMinutes <= 480) { addTime(customMinutes); setShowCustomModal(false); } } }}
-                            autoFocus
-                        />
-                        <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
-                            <button className="btn-activity btn-clear" onClick={() => setShowCustomModal(false)}>Cancel</button>
-                            <button className="btn-activity" style={{ background: 'var(--primary)', color: '#fff' }}
-                                onClick={() => { if (customMinutes > 0 && customMinutes <= 480) { addTime(customMinutes); setShowCustomModal(false); } }}>
-                                Add Time
+                <div className="modal-overlay" onClick={() => setShowCustomModal(false)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3><i className="fas fa-clock"></i> Add Custom Time</h3>
+                            <button className="modal-close" onClick={() => setShowCustomModal(false)}>
+                                <i className="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div className="modal-body">
+                            <label className="timer-input-label">Minutes (1-480)</label>
+                            <input
+                                type="number"
+                                className="timer-input"
+                                min={1}
+                                max={480}
+                                value={customMinutes}
+                                onChange={e => setCustomMinutes(parseInt(e.target.value) || 0)}
+                                onKeyDown={e => { if (e.key === 'Enter') { if (customMinutes > 0 && customMinutes <= 480) { addTime(customMinutes); setShowCustomModal(false); } } }}
+                                autoFocus
+                            />
+                        </div>
+                        <div className="modal-footer">
+                            <button className="modal-btn cancel" onClick={() => setShowCustomModal(false)}>Cancel</button>
+                            <button className="modal-btn confirm" onClick={() => { if (customMinutes > 0 && customMinutes <= 480) { addTime(customMinutes); setShowCustomModal(false); } }}>
+                                <i className="fas fa-plus"></i> Add Time
                             </button>
                         </div>
                     </div>

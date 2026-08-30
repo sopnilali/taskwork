@@ -70,52 +70,58 @@ export default function SummaryCards({ refreshKey, currentSessionSeconds }: { re
     const rangeLabel = range === 'today' ? "Today" : range === 'week' ? "This Week" : range === 'month' ? "This Month" : "All Time";
 
     return (
-        <div>
-            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+        <div className="stats-section-modern">
+            <div className="stats-tabs">
                 {([
-                    { key: 'today', label: 'Today' },
-                    { key: 'week', label: 'Weekly' },
-                    { key: 'month', label: 'Monthly' },
-                    { key: 'all', label: 'All Time' },
+                    { key: 'today', label: 'Today', icon: 'fas fa-sun' },
+                    { key: 'week', label: 'Weekly', icon: 'fas fa-calendar-week' },
+                    { key: 'month', label: 'Monthly', icon: 'fas fa-calendar' },
+                    { key: 'all', label: 'All Time', icon: 'fas fa-infinity' },
                 ] as const).map(opt => (
                     <button key={opt.key}
-                        className="btn-activity"
-                        style={range === opt.key
-                            ? { background: 'var(--primary)', color: '#fff', padding: '4px 14px', fontSize: 12 }
-                            : { padding: '4px 14px', fontSize: 12 }}
+                        className={`stats-tab ${range === opt.key ? 'active' : ''}`}
                         onClick={() => setRange(opt.key)}>
-                        {opt.label}
+                        <i className={opt.icon}></i>
+                        <span>{opt.label}</span>
                     </button>
                 ))}
             </div>
-            <div className="summary-cards">
-                <div className="summary-card">
-                    <div className="summary-icon tasks">
-                        <i className="fas fa-check-circle"></i>
+            <div className="stats-cards-grid">
+                <div className="stats-card tasks-card">
+                    <div className="stats-card-icon">
+                        <i className="fas fa-list-check"></i>
                     </div>
-                    <div className="summary-label">{rangeLabel} — Tasks</div>
-                    <div className="summary-value">{active.count}</div>
+                    <div className="stats-card-content">
+                        <div className="stats-card-value">{active.count}</div>
+                        <div className="stats-card-label">Tasks Done</div>
+                    </div>
                 </div>
-                <div className="summary-card">
-                    <div className="summary-icon time">
+                <div className="stats-card hours-card">
+                    <div className="stats-card-icon">
                         <i className="fas fa-clock"></i>
                     </div>
-                    <div className="summary-label">{rangeLabel} — Hours</div>
-                    <div className="summary-value">{formatHours(active.totalDuration)}</div>
+                    <div className="stats-card-content">
+                        <div className="stats-card-value">{formatHours(active.totalDuration)}</div>
+                        <div className="stats-card-label">Hours Worked</div>
+                    </div>
                 </div>
-                <div className="summary-card">
-                    <div className="summary-icon earnings">
+                <div className="stats-card earnings-card">
+                    <div className="stats-card-icon">
                         <i className="fas fa-bangladeshi-taka-sign"></i>
                     </div>
-                    <div className="summary-label">{rangeLabel} — Earnings</div>
-                    <div className="summary-value">৳{active.totalEarnings}</div>
-                </div>
-                <div className="summary-card">
-                    <div className="summary-icon session">
-                        <i className="fas fa-play-circle"></i>
+                    <div className="stats-card-content">
+                        <div className="stats-card-value">৳{active.totalEarnings}</div>
+                        <div className="stats-card-label">Earnings</div>
                     </div>
-                    <div className="summary-label">Current Session</div>
-                    <div className="summary-value">{formatHours(currentSessionSeconds)}</div>
+                </div>
+                <div className="stats-card session-card">
+                    <div className="stats-card-icon">
+                        <i className="fas fa-play"></i>
+                    </div>
+                    <div className="stats-card-content">
+                        <div className="stats-card-value">{formatHours(currentSessionSeconds)}</div>
+                        <div className="stats-card-label">Current Session</div>
+                    </div>
                 </div>
             </div>
         </div>
