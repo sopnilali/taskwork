@@ -16,6 +16,10 @@ export default function Header() {
                 <span className="header-badge">Free Online Task Timer</span>
             </div>
             <div className="header-right">
+                <a href="mailto:sopnilali@example.com" className="header-contact-btn" title="Contact">
+                    <i className="fas fa-envelope"></i>
+                    <span>Contact</span>
+                </a>
                 {user?.is_admin && (
                     <Link href="/admin" className="header-btn" title="Admin Panel" style={{ textDecoration: 'none' }}>
                         <i className="fas fa-shield-halved"></i>
