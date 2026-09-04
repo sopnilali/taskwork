@@ -11,6 +11,7 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "TaskTimer — Free Online Task Timer",
   description: "Track your time, boost your productivity",
+  icons: { icon: "/tasktimer-logo.svg" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

@@ -1,45 +1,54 @@
 'use client';
-
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import Header from '@/components/Header';
-import TimerCard from '@/components/TimerCard';
+import Sidebar from '@/components/Sidebar';
 import SummaryCards from '@/components/SummaryCards';
-import ActivityPanel from '@/components/ActivityPanel';
 
 export default function DashboardPage() {
     const { user, loading } = useAuth();
     const router = useRouter();
-    const [refreshKey, setRefreshKey] = useState(0);
-    const [currentSessionSeconds, setCurrentSessionSeconds] = useState(0);
+    const [refreshKey] = useState(0);
+    const [currentSessionSeconds] = useState(0);
 
     useEffect(() => {
-        if (!loading && !user) {
-            router.replace('/auth');
-        }
+        if (!loading && !user) router.replace('/auth');
     }, [user, loading, router]);
-
-    const onTaskSaved = useCallback(() => {
-        setRefreshKey(k => k + 1);
-    }, []);
-
-    const onSessionUpdate = useCallback((seconds: number) => {
-        setCurrentSessionSeconds(seconds);
-    }, []);
 
     if (loading || !user) return null;
 
     return (
         <>
             <Header />
-            <div className="main-container">
-                <SummaryCards refreshKey={refreshKey} currentSessionSeconds={currentSessionSeconds} />
-                <div className="dashboard-grid" style={{ marginTop: 16 }}>
-                    <div className="left-panel">
-                        <TimerCard onTaskSaved={onTaskSaved} onSessionUpdate={onSessionUpdate} />
+            <div className="dashboard-layout">
+                <Sidebar />
+                <div className="dashboard-main">
+                    <div className="page-header">
+                        <div>
+                            <h1 className="page-title"><i className="fas fa-table-columns"></i> Dashboard</h1>
+                            <p className="page-subtitle">Welcome back, {user.username} — here&apos;s your overview</p>
+                        </div>
+                        <div className="page-header-actions">
+                            <button className="btn-primary" onClick={() => router.push('/task-work')}><i className="fas fa-play"></i> Start Working</button>
+                            <button className="btn-secondary" onClick={() => router.push('/task-list')}><i className="fas fa-list"></i> View Tasks</button>
+                        </div>
                     </div>
-                    <ActivityPanel refreshKey={refreshKey} />
+                    <SummaryCards refreshKey={refreshKey} currentSessionSeconds={currentSessionSeconds} />
+                    <div className="dashboard-overview-grid">
+                        <div className="overview-card">
+                            <div className="overview-card-icon"><i className="fas fa-bolt"></i></div>
+                            <h3>Quick Start</h3>
+                            <p>Go to Task Work to start timer and track your work instantly</p>
+                            <button className="overview-card-btn" onClick={() => router.push('/task-work')}>Go to Task Work →</button>
+                        </div>
+                        <div className="overview-card">
+                            <div className="overview-card-icon list"><i className="fas fa-list-check"></i></div>
+                            <h3>Your Tasks</h3>
+                            <p>Review, filter and manage all completed tasks in one place</p>
+                            <button className="overview-card-btn" onClick={() => router.push('/task-list')}>Go to Task List →</button>
+                        </div>
+                    </div>
                 </div>
             </div>
         </>

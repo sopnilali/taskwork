@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 
 function formatHours(totalSeconds: number): string {
@@ -17,9 +18,11 @@ interface StatsData {
 
 export default function SummaryCards({ refreshKey, currentSessionSeconds }: { refreshKey: number; currentSessionSeconds: number }) {
     const { authFetch } = useAuth();
-    const [range, setRange] = useState<'today' | 'week' | 'month' | 'all'>('today');
+    const pathname = usePathname();
+    const [range, setRange] = useState<'today' | 'yesterday' | 'week' | 'month' | 'all'>('today');
 
     const [today, setToday] = useState<StatsData>({ totalDuration: 0, totalEarnings: 0, count: 0 });
+    const [yesterday, setYesterday] = useState<StatsData>({ totalDuration: 0, totalEarnings: 0, count: 0 });
     const [week, setWeek] = useState<StatsData>({ totalDuration: 0, totalEarnings: 0, count: 0 });
     const [month, setMonth] = useState<StatsData>({ totalDuration: 0, totalEarnings: 0, count: 0 });
     const [allTime, setAllTime] = useState<StatsData>({ totalDuration: 0, totalEarnings: 0, count: 0 });
@@ -39,6 +42,11 @@ export default function SummaryCards({ refreshKey, currentSessionSeconds }: { re
                 totalDuration: Number(stats.today?.totalDuration) || 0,
                 totalEarnings: Math.round(Number(stats.today?.totalEarnings) || 0),
                 count: Number(stats.today?.count) || 0,
+            });
+            setYesterday({
+                totalDuration: Number(stats.yesterday?.totalDuration) || 0,
+                totalEarnings: Math.round(Number(stats.yesterday?.totalEarnings) || 0),
+                count: Number(stats.yesterday?.count) || 0,
             });
             setWeek({
                 totalDuration: Number(stats.week?.totalDuration) || 0,
@@ -62,18 +70,26 @@ export default function SummaryCards({ refreshKey, currentSessionSeconds }: { re
 
     useEffect(() => {
         loadStats();
-        const interval = setInterval(loadStats, 15000);
-        return () => clearInterval(interval);
+    }, [pathname]);
+
+    useEffect(() => {
+        loadStats();
+        const interval = setInterval(() => { if (document.visibilityState === 'visible') loadStats(); }, 10000);
+        const onRefresh = () => loadStats();
+        window.addEventListener('stats-refresh', onRefresh);
+        const onVisible = () => { if (document.visibilityState === 'visible') loadStats(); };
+        document.addEventListener('visibilitychange', onVisible);
+        return () => { clearInterval(interval); window.removeEventListener('stats-refresh', onRefresh); document.removeEventListener('visibilitychange', onVisible); };
     }, [loadStats, refreshKey]);
 
-    const active = range === 'today' ? today : range === 'week' ? week : range === 'month' ? month : allTime;
-    const rangeLabel = range === 'today' ? "Today" : range === 'week' ? "This Week" : range === 'month' ? "This Month" : "All Time";
+    const active = range === 'today' ? today : range === 'yesterday' ? yesterday : range === 'week' ? week : range === 'month' ? month : allTime;
 
     return (
         <div className="stats-section-modern">
             <div className="stats-tabs">
                 {([
                     { key: 'today', label: 'Today', icon: 'fas fa-sun' },
+                    { key: 'yesterday', label: 'Yesterday', icon: 'fas fa-moon' },
                     { key: 'week', label: 'Weekly', icon: 'fas fa-calendar-week' },
                     { key: 'month', label: 'Monthly', icon: 'fas fa-calendar' },
                     { key: 'all', label: 'All Time', icon: 'fas fa-infinity' },

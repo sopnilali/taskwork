@@ -15,8 +15,6 @@ export async function initDatabase() {
         )
     `;
 
-    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false`;
-
     await sql`
         CREATE TABLE IF NOT EXISTS tasks (
             id SERIAL PRIMARY KEY,
@@ -28,9 +26,14 @@ export async function initDatabase() {
             ended_at TEXT NOT NULL,
             total_duration INTEGER NOT NULL,
             hourly_rate REAL DEFAULT 0,
+            work_date DATE DEFAULT CURRENT_DATE,
             created_at TEXT DEFAULT (now()::text)
         )
     `;
+
+    await sql`ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN DEFAULT false`;
+    await sql`ALTER TABLE tasks ADD COLUMN IF NOT EXISTS work_date DATE DEFAULT CURRENT_DATE`;
+    await sql`UPDATE tasks SET work_date = created_at::date WHERE work_date IS NULL`;
 
     await sql`
         CREATE TABLE IF NOT EXISTS activity_logs (

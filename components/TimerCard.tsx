@@ -10,11 +10,16 @@ interface ActiveTimer {
     task_name: string;
     category: string;
     hourly_rate: number;
+    work_date: string;
     status: 'running' | 'paused';
     started_at: number;
     last_resumed_at: number | null;
     accumulated_duration: number;
     paused_at: number | null;
+}
+
+function getTodayLocal(): string {
+    return new Date().toLocaleDateString('en-CA');
 }
 
 function formatTime(totalSeconds: number): string {
@@ -42,6 +47,18 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
     const [taskName, setTaskName] = useState('');
     const [category, setCategory] = useState('Work');
     const [hourlyRate, setHourlyRate] = useState(0);
+    const [workDate, setWorkDate] = useState(getTodayLocal());
+
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('tasktimer_prefs');
+            if (raw) {
+                const p = JSON.parse(raw);
+                if (p.defaultCategory) setCategory(p.defaultCategory);
+                if (typeof p.defaultRate === 'number') setHourlyRate(p.defaultRate);
+            }
+        } catch {}
+    }, []);
     const [activeTimer, setActiveTimer] = useState<ActiveTimer | null>(null);
     const [display, setDisplay] = useState('00:00:00');
     const [taskNameError, setTaskNameError] = useState(false);
@@ -110,6 +127,7 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
             task_name: taskName.trim(),
             category,
             hourly_rate: hourlyRate,
+            work_date: workDate,
             status: 'running',
             started_at: Date.now(),
             last_resumed_at: Date.now(),
@@ -165,6 +183,7 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
             task_name: activeTimer.task_name,
             category: activeTimer.category,
             hourly_rate: activeTimer.hourly_rate,
+            work_date: activeTimer.work_date || workDate,
             status: 'completed',
             started_at: startedAt,
             ended_at: endedAt,
@@ -194,6 +213,7 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
         setTaskName('');
         setCategory('Work');
         setHourlyRate(0);
+        setWorkDate(getTodayLocal());
     };
 
     const addTime = (minutes: number) => {
@@ -218,6 +238,7 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
             setTaskName(saved.task_name);
             setCategory(saved.category);
             setHourlyRate(saved.hourly_rate || 0);
+            setWorkDate(saved.work_date || getTodayLocal());
             if (saved.status === 'running') {
                 const elapsed = getElapsedSeconds(saved);
                 saved.accumulated_duration = elapsed;
@@ -321,6 +342,19 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
                             disabled={timerActive}
                         />
                     </div>
+                    <div className="timer-input-group" style={{ flex: 1 }}>
+                        <label className="timer-input-label">
+                            <i className="fas fa-calendar"></i> Date
+                        </label>
+                        <input
+                            type="date"
+                            className="timer-input"
+                            value={workDate}
+                            max={getTodayLocal()}
+                            onChange={e => setWorkDate(e.target.value)}
+                            disabled={timerActive}
+                        />
+                    </div>
                 </div>
 
                 <div className="timer-display-section">
@@ -374,6 +408,16 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
                         <div className="task-info-item">
                             <i className="fas fa-folder"></i>
                             <span>{activeTimer?.category}</span>
+                        </div>
+                        <div className="task-info-item">
+                            <i className="fas fa-calendar"></i>
+                            <span>{(() => {
+                                const raw = activeTimer?.work_date?.slice(0, 10) || '';
+                                if (!raw) return '';
+                                const [y, m, d] = raw.split('-').map(Number);
+                                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                                return `${String(d).padStart(2, '0')} ${months[m - 1]} ${y}`;
+                            })()}</span>
                         </div>
                         {activeTimer?.hourly_rate ? (
                             <div className="task-info-item">

@@ -3,7 +3,6 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
-import Header from '@/components/Header';
 import AuthForm from '@/components/AuthForm';
 
 export default function AuthPage() {
@@ -19,10 +18,5 @@ export default function AuthPage() {
     if (loading) return null;
     if (user) return null;
 
-    return (
-        <>
-            <Header />
-            <AuthForm />
-        </>
-    );
+    return <AuthForm />;
 }
