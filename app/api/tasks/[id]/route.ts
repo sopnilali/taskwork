@@ -28,7 +28,29 @@ export async function PATCH(req: NextRequest, context: { params: Promise<{ id: s
 
         const { id } = await context.params;
         const taskId = parseInt(id);
-        const { task_name, category } = await req.json();
+        const { task_name, category, total_duration, hourly_rate, work_date } = await req.json();
+
+        if (total_duration !== undefined) {
+            const dur = parseInt(total_duration);
+            if (isNaN(dur) || dur < 0 || dur > 86400) return NextResponse.json({ error: 'Invalid duration' }, { status: 400 });
+            const existing = await sql`SELECT id FROM tasks WHERE id = ${taskId} AND user_id = ${user.id}`;
+            if (existing.length === 0) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+            await sql`UPDATE tasks SET total_duration = ${dur} WHERE id = ${taskId} AND user_id = ${user.id}`;
+        }
+
+        if (hourly_rate !== undefined) {
+            const rate = parseFloat(hourly_rate);
+            if (isNaN(rate) || rate < 0) return NextResponse.json({ error: 'Invalid rate' }, { status: 400 });
+            const existing = await sql`SELECT id FROM tasks WHERE id = ${taskId} AND user_id = ${user.id}`;
+            if (existing.length === 0) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+            await sql`UPDATE tasks SET hourly_rate = ${rate} WHERE id = ${taskId} AND user_id = ${user.id}`;
+        }
+
+        if (work_date !== undefined) {
+            const existing = await sql`SELECT id FROM tasks WHERE id = ${taskId} AND user_id = ${user.id}`;
+            if (existing.length === 0) return NextResponse.json({ error: 'Task not found' }, { status: 404 });
+            await sql`UPDATE tasks SET work_date = ${work_date}::date WHERE id = ${taskId} AND user_id = ${user.id}`;
+        }
 
         if (task_name !== undefined) {
             const name = String(task_name).trim();

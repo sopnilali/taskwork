@@ -32,7 +32,7 @@ export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [filter, setFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
-    const [showClearModal, setShowClearModal] = useState(false);
+
 
     useEffect(() => {
         const handler = (e: Event) => setSearchQuery((e as CustomEvent).detail?.toLowerCase() || '');
@@ -50,16 +50,6 @@ export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
             console.error('Failed to load activity log:', err);
         }
     }, [authFetch, filter]);
-
-    const clearAllActivity = async () => {
-        try {
-            await authFetch('/api/tasks', { method: 'DELETE' });
-            loadActivityLog();
-            setShowClearModal(false);
-        } catch (err) {
-            console.error('Failed to clear activity:', err);
-        }
-    };
 
     const deleteTask = async (id: number) => {
         try {
@@ -105,11 +95,6 @@ export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
                 <div className="card-body">
                     <div className="activity-header">
                         <h3>Activity Log</h3>
-                        <div className="activity-actions">
-                            <button className="btn-activity btn-clear" onClick={() => setShowClearModal(true)}>
-                                <i className="fas fa-trash-alt"></i> Clear All
-                            </button>
-                        </div>
                     </div>
 
                     <div className="filter-tabs">
@@ -174,27 +159,7 @@ export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
                 </div>
             </div>
 
-            {showClearModal && (
-                <div className="modal-overlay" onClick={() => setShowClearModal(false)}>
-                    <div className="modal-dialog modal-dialog-centered" onClick={e => e.stopPropagation()}>
-                        <div className="modal-content">
-                            <div className="modal-header">
-                                <h5 className="modal-title">Clear All Activity</h5>
-                                <button type="button" className="btn-close" onClick={() => setShowClearModal(false)}></button>
-                            </div>
-                            <div className="modal-body">
-                                <p style={{ color: 'var(--gray-600)', fontSize: 14, margin: 0 }}>
-                                    Are you sure you want to delete all completed task history? This action cannot be undone.
-                                </p>
-                            </div>
-                            <div className="modal-footer">
-                                <button className="btn-modal btn-modal-cancel" onClick={() => setShowClearModal(false)}>Cancel</button>
-                                <button className="btn-modal btn-modal-danger" onClick={clearAllActivity}>Clear All</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+
         </div>
     );
 }
