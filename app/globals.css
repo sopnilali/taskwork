@@ -817,6 +817,16 @@ body {
   font-weight: 600;
   color: var(--gray-600);
 }
+.payout-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 768px) {
+  .payout-grid {
+    grid-template-columns: 1fr;
+  }
+}
 .mini-bar-count {
   font-size: 10px;
   color: var(--gray-400);

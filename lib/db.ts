@@ -44,4 +44,18 @@ export async function initDatabase() {
             duration INTEGER DEFAULT 0
         )
     `;
+
+    await sql`
+        CREATE TABLE IF NOT EXISTS payouts (
+            id SERIAL PRIMARY KEY,
+            user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+            amount INTEGER NOT NULL CHECK(amount > 0),
+            method TEXT NOT NULL CHECK(method IN ('bkash','nagad','rocket','bank','paypal')),
+            account TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','approved','rejected','paid')),
+            note TEXT DEFAULT '',
+            created_at TEXT DEFAULT (now()::text)
+        )
+    `;
+    await sql`ALTER TABLE payouts ADD COLUMN IF NOT EXISTS note TEXT DEFAULT ''`;
 }

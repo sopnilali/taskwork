@@ -9,6 +9,7 @@ export default function Sidebar() {
     const isDashboard = pathname === '/dashboard';
     const isTaskWork = pathname === '/task-work';
     const isTaskList = pathname === '/task-list';
+    const isPayout = pathname === '/payout';
 
     return (
         <aside className="dashboard-sidebar">
@@ -32,6 +33,9 @@ export default function Sidebar() {
                         </button>
                     </div>
                 )}
+                <button className={`sidebar-nav-item ${isPayout ? 'active' : ''}`} onClick={() => router.push('/payout')} style={{ marginTop: 8 }}>
+                    <i className="fas fa-money-bill-wave"></i> Payout
+                </button>
             </div>
         </aside>
     );

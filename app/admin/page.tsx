@@ -50,6 +50,18 @@ interface GlobalStats {
     allTime: { count: number; seconds: number; earnings: number };
 }
 
+interface PayoutAdmin {
+    id: number;
+    user_id: number;
+    username: string;
+    amount: number;
+    method: string;
+    account: string;
+    status: string;
+    note: string;
+    created_at: string;
+}
+
 function fmtDur(s: number) {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
@@ -95,13 +107,14 @@ function exportCSV(tasks: AdminTask[]) {
 export default function AdminPage() {
     const { user, loading, authFetch } = useAuth();
     const router = useRouter();
-    const [tab, setTab] = useState<'stats' | 'users' | 'tasks' | 'activity'>('stats');
+    const [tab, setTab] = useState<'stats' | 'users' | 'tasks' | 'activity' | 'payouts'>('stats');
 
     const [stats, setStats] = useState<GlobalStats | null>(null);
     const [statsRange, setStatsRange] = useState('all');
     const [users, setUsers] = useState<AdminUser[]>([]);
     const [tasks, setTasks] = useState<AdminTask[]>([]);
     const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+    const [payouts, setPayouts] = useState<PayoutAdmin[]>([]);
 
     const [showCreateUser, setShowCreateUser] = useState(false);
     const [newUsername, setNewUsername] = useState('');
@@ -163,14 +176,19 @@ export default function AdminPage() {
         } catch {}
     }, [authFetch, activityUserFilter]);
 
+    const loadPayouts = useCallback(async () => {
+        try { const res = await authFetch('/api/admin/payouts'); const d = await res.json(); setPayouts(d.payouts || []); } catch {}
+    }, [authFetch]);
+
     useEffect(() => {
         if (!loading && user?.is_admin) {
             if (tab === 'stats') loadStats();
             if (tab === 'users') loadUsers();
             if (tab === 'tasks') loadTasks();
             if (tab === 'activity') loadActivity();
+            if (tab === 'payouts') loadPayouts();
         }
-    }, [tab, loading, user, loadStats, loadUsers, loadTasks, loadActivity]);
+    }, [tab, loading, user, loadStats, loadUsers, loadTasks, loadActivity, loadPayouts]);
 
     const handleCreateUser = async () => {
         setCreateError('');
@@ -228,6 +246,14 @@ export default function AdminPage() {
         } catch {}
     };
 
+    const handlePayoutStatus = async (id: number, status: string) => {
+        try {
+            await authFetch(`/api/admin/payouts/${id}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+            loadPayouts();
+            showToast(`Payout ${status}`);
+        } catch {}
+    };
+
     const handleViewUser = async (u: AdminUser) => {
         setViewUser(u);
         try {
@@ -257,7 +283,7 @@ export default function AdminPage() {
                             )}
                         </div>
                         <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-                            {(['stats', 'users', 'tasks', 'activity'] as const).map(t => (
+                            {(['stats', 'users', 'tasks', 'activity', 'payouts'] as const).map(t => (
                                 <button key={t} className={`btn-activity ${tab === t ? '' : 'btn-clear'}`}
                                     style={tab === t ? { background: 'var(--primary)', color: '#fff' } : {}}
                                     onClick={() => setTab(t)}>
@@ -265,6 +291,7 @@ export default function AdminPage() {
                                     {t === 'users' && <><i className="fas fa-users"></i> Users</>}
                                     {t === 'tasks' && <><i className="fas fa-list-check"></i> Tasks</>}
                                     {t === 'activity' && <><i className="fas fa-clock-rotate-left"></i> Activity</>}
+                                    {t === 'payouts' && <><i className="fas fa-money-bill-wave"></i> Payouts</>}
                                 </button>
                             ))}
                         </div>
@@ -581,6 +608,52 @@ export default function AdminPage() {
                                         {activityLogs.length === 0 && (
                                             <tr><td colSpan={6} style={{ padding: 24, textAlign: 'center', color: 'var(--gray-400)' }}>No activity logs</td></tr>
                                         )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
+                {tab === 'payouts' && (
+                    <div className="card">
+                        <div className="card-body">
+                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 16 }}><i className="fas fa-money-bill-wave" style={{ color: 'var(--primary)', marginRight: 8 }}></i>Payout Requests ({payouts.length})</h3>
+                            <div style={{ overflowX: 'auto' }}>
+                                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                                    <thead>
+                                        <tr style={{ borderBottom: '2px solid var(--gray-200)' }}>
+                                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600 }}>User</th>
+                                            <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600 }}>Amount</th>
+                                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600 }}>Method</th>
+                                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600 }}>Account</th>
+                                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600 }}>Status</th>
+                                            <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 600 }}>Date</th>
+                                            <th style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 600 }}>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {payouts.map(p => (
+                                            <tr key={p.id} style={{ borderBottom: '1px solid var(--gray-100)' }}>
+                                                <td style={{ padding: '8px 12px', fontWeight: 600 }}>{p.username}</td>
+                                                <td style={{ padding: '8px 12px', textAlign: 'right', fontWeight: 700 }}>৳{p.amount}</td>
+                                                <td style={{ padding: '8px 12px' }}>{p.method}</td>
+                                                <td style={{ padding: '8px 12px' }}>{p.account}</td>
+                                                <td style={{ padding: '8px 12px' }}>
+                                                    <select value={p.status} onChange={e => handlePayoutStatus(p.id, e.target.value)} style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid var(--gray-200)', fontSize: 12, fontWeight: 600, color: p.status === 'paid' ? '#16a34a' : p.status === 'pending' ? '#d97706' : p.status === 'approved' ? '#2563eb' : '#ef4444' }}>
+                                                        <option value="pending">Pending</option>
+                                                        <option value="approved">Approved</option>
+                                                        <option value="paid">Paid</option>
+                                                        <option value="rejected">Rejected</option>
+                                                    </select>
+                                                </td>
+                                                <td style={{ padding: '8px 12px' }}>{fmtDateTime(p.created_at)}</td>
+                                                <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                                                    <button className="btn-activity btn-clear" style={{ padding: '4px 8px', fontSize: 11, color: 'var(--danger)' }} onClick={async () => { if (confirm('Delete payout?')) { await authFetch(`/api/admin/payouts/${p.id}`, { method: 'DELETE' }); loadPayouts(); } }}><i className="fas fa-trash"></i></button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {payouts.length === 0 && <tr><td colSpan={7} style={{ padding: 24, textAlign: 'center', color: 'var(--gray-400)' }}>No payout requests</td></tr>}
                                     </tbody>
                                 </table>
                             </div>

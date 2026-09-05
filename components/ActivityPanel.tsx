@@ -93,10 +93,6 @@ export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
         <div className="right-panel activity-panel">
             <div className="card">
                 <div className="card-body">
-                    <div className="activity-header">
-                        <h3>Activity Log</h3>
-                    </div>
-
                     <div className="filter-tabs">
                         {FILTERS.map(f => (
                             <button
