@@ -67,7 +67,8 @@ export default function PayoutPage() {
         load();
     };
 
-    if (loading || !user) return null;
+    if (loading) return <div className="loading-screen"><div className="loading-logo"><i className="fas fa-clock"></i></div><div className="loading-spinner"></div><p>Loading...</p></div>;
+    if (!user) return null;
 
     return (
         <>

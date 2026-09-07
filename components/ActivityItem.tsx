@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 interface Task {
     id: number;
@@ -44,15 +44,20 @@ export default function ActivityItem({ task, onDelete, onUpdate }: { task: Task;
     const [editM, setEditM] = useState(Math.floor((task.total_duration % 3600) / 60));
     const [saving, setSaving] = useState(false);
 
-    const started = new Date(task.started_at);
-    const ended = new Date(task.ended_at);
-    const startTime = started.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const endTime = ended.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const [timeLabel, setTimeLabel] = useState('');
     const duration = formatDurationShort(task.total_duration);
     const badgeClass = task.status === 'completed' ? 'badge-completed' : 'badge-stopped';
     const statusLabel = task.status.charAt(0).toUpperCase() + task.status.slice(1);
     const earnings = Math.round((task.total_duration || 0) * (task.hourly_rate || 0) / 3600);
     const dateLabel = formatWorkDate(task);
+
+    useEffect(() => {
+        try {
+            const s = new Date(task.started_at);
+            const e = new Date(task.ended_at);
+            setTimeLabel(`${s.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} — ${e.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`);
+        } catch { setTimeLabel(''); }
+    }, [task.started_at, task.ended_at]);
 
     const handleSave = async () => {
         const name = editName.trim();
@@ -112,9 +117,9 @@ export default function ActivityItem({ task, onDelete, onUpdate }: { task: Task;
                             <i className="fas fa-calendar"></i> {dateLabel}
                         </div>
                     )}
-                    <div className="activity-times">
+                    <div className="activity-times" suppressHydrationWarning>
                         <i className="fas fa-arrow-right"></i>
-                        {startTime} — {endTime}
+                        {timeLabel}
                     </div>
                     <div className="activity-duration" onClick={() => { setEditH(Math.floor(task.total_duration / 3600)); setEditM(Math.floor((task.total_duration % 3600) / 60)); setEditing(true); }} title="Click to edit" style={{ cursor: 'pointer' }}>
                         <i className="fas fa-clock"></i> {duration}

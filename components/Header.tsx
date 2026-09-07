@@ -59,8 +59,12 @@ export default function Header() {
         return () => clearTimeout(t);
     }, [search]);
 
-    const todayLabel = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+    const [todayLabel, setTodayLabel] = useState('');
     const hoursLabel = todayStats ? `${Math.floor(todayStats.total / 3600)}h ${Math.floor((todayStats.total % 3600) / 60)}m` : '';
+
+    useEffect(() => {
+        setTodayLabel(new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }));
+    }, []);
 
     return (
         <header className="header">
@@ -104,7 +108,7 @@ export default function Header() {
             <div className="header-right">
                 {user && (
                     <>
-                        <div className="header-date-chip">
+                        <div className="header-date-chip" suppressHydrationWarning>
                             <i className="fas fa-calendar-day"></i> {todayLabel}
                             {todayStats && <span>{todayStats.count} · {hoursLabel}</span>}
                         </div>

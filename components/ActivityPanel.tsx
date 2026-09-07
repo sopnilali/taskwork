@@ -32,6 +32,7 @@ export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
     const [tasks, setTasks] = useState<Task[]>([]);
     const [filter, setFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
+    const [loading, setLoading] = useState(true);
 
 
     useEffect(() => {
@@ -42,13 +43,14 @@ export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
 
     const loadActivityLog = useCallback(async () => {
         try {
+            setLoading(true);
             const url = `/api/tasks?filter=${filter}`;
             const res = await authFetch(url);
             const data = await res.json();
-            setTasks(data);
+            setTasks(Array.isArray(data) ? data : []);
         } catch (err) {
             console.error('Failed to load activity log:', err);
-        }
+        } finally { setLoading(false); }
     }, [authFetch, filter]);
 
     const deleteTask = async (id: number) => {
@@ -106,7 +108,9 @@ export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
                     </div>
 
                     <div className="activity-list">
-                        {(() => {
+                        {loading ? (
+                            <div className="card-loading"><div className="loading-spinner small"></div><p>Loading tasks...</p></div>
+                        ) : (() => {
                             const filtered = searchQuery ? tasks.filter(t => t.task_name.toLowerCase().includes(searchQuery) || t.category.toLowerCase().includes(searchQuery)) : tasks;
                             if (filtered.length === 0) {
                                 return (

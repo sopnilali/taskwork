@@ -15,7 +15,8 @@ export default function TaskListPage() {
         if (!loading && !user) router.replace('/auth');
     }, [user, loading, router]);
 
-    if (loading || !user) return null;
+    if (loading) return <div className="loading-screen"><div className="loading-logo"><i className="fas fa-clock"></i></div><div className="loading-spinner"></div><p>Loading...</p></div>;
+    if (!user) return null;
 
     return (
         <>

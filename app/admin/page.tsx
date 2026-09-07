@@ -263,7 +263,8 @@ export default function AdminPage() {
         } catch {}
     };
 
-    if (loading || !user || !user.is_admin) return null;
+    if (loading) return <div className="loading-screen"><div className="loading-logo"><i className="fas fa-clock"></i></div><div className="loading-spinner"></div><p>Loading...</p></div>;
+    if (!user || !user.is_admin) return null;
 
     return (
         <>
