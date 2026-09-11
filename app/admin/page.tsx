@@ -107,7 +107,7 @@ function exportCSV(tasks: AdminTask[]) {
 export default function AdminPage() {
     const { user, loading, authFetch } = useAuth();
     const router = useRouter();
-    const [tab, setTab] = useState<'stats' | 'users' | 'tasks' | 'activity' | 'payouts'>('stats');
+    const [tab, setTab] = useState<'stats' | 'users' | 'tasks' | 'activity' | 'payouts' | 'seo' | 'theme'>('stats');
 
     const [stats, setStats] = useState<GlobalStats | null>(null);
     const [statsRange, setStatsRange] = useState('all');
@@ -135,6 +135,16 @@ export default function AdminPage() {
     const [activityUserFilter, setActivityUserFilter] = useState('');
     const [confirmAction, setConfirmAction] = useState<{ type: string; id?: number; label: string; onConfirm: () => void } | null>(null);
     const [toast, setToast] = useState('');
+    const [seo, setSeo] = useState<Record<string, string | boolean>>({});
+    const [seoSaving, setSeoSaving] = useState(false);
+    const [seoLoaded, setSeoLoaded] = useState(false);
+    const [pages, setPages] = useState<Array<Record<string, unknown>>>([]);
+    const [pageRoute, setPageRoute] = useState('/');
+    const [pageForm, setPageForm] = useState<Record<string, unknown>>({});
+    const [pageSaving, setPageSaving] = useState(false);
+    const [theme, setTheme] = useState<Record<string, string | boolean>>({});
+    const [themeSaving, setThemeSaving] = useState(false);
+    const [themeLoaded, setThemeLoaded] = useState(false);
 
     useEffect(() => {
         if (!loading && !user) router.replace('/auth');
@@ -180,6 +190,36 @@ export default function AdminPage() {
         try { const res = await authFetch('/api/admin/payouts'); const d = await res.json(); setPayouts(d.payouts || []); } catch {}
     }, [authFetch]);
 
+    const loadSeo = useCallback(async () => {
+        try { const res = await authFetch('/api/admin/seo'); const d = await res.json(); setSeo(d); setSeoLoaded(true); const pr = await authFetch('/api/admin/seo/pages'); const pd = await pr.json(); if (Array.isArray(pd)) { setPages(pd); if (pd.length && !pd.find((p: Record<string,unknown>)=>p.route===pageRoute)) setPageRoute(String((pd[0] as Record<string,unknown>).route)); const cur = pd.find((p: Record<string,unknown>)=>p.route===pageRoute) || pd[0]; if (cur) setPageForm(cur as Record<string,unknown>); } } catch {}
+    }, [authFetch, pageRoute]);
+
+    const saveSeo = async () => {
+        setSeoSaving(true);
+        try {
+            const res = await authFetch('/api/admin/seo', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(seo) });
+            const d = await res.json();
+            if (!res.ok) { showToast(d.error || 'Failed'); return; }
+            setSeo(d); showToast('SEO settings saved');
+        } catch { showToast('Failed to save'); } finally { setSeoSaving(false); }
+    };
+    const savePage = async () => {
+        setPageSaving(true);
+        try {
+            const payload = { route: pageRoute, ...pageForm };
+            const r = await authFetch('/api/admin/seo/pages', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+            const d = await r.json(); if (!r.ok) { showToast(d.error||'Failed'); return; }
+            setPages(prev => prev.map(p => p.route===pageRoute ? d : p)); setPageForm(d as Record<string,unknown>); showToast(`SEO saved for ${pageRoute}`);
+        } catch { showToast('Failed'); } finally { setPageSaving(false); }
+    };
+    const loadTheme = useCallback(async () => {
+        try { const r = await authFetch('/api/admin/theme'); const d = await r.json(); setTheme(d); setThemeLoaded(true); } catch {}
+    }, [authFetch]);
+    const saveTheme = async () => {
+        setThemeSaving(true);
+        try { const r = await authFetch('/api/admin/theme', { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(theme) }); const d = await r.json(); if (!r.ok) { showToast(d.error||'Failed'); return; } setTheme(d); showToast('Theme saved — reload to see'); localStorage.setItem('tasktimer_theme', JSON.stringify(d)); } catch { showToast('Failed'); } finally { setThemeSaving(false); }
+    };
+
     useEffect(() => {
         if (!loading && user?.is_admin) {
             if (tab === 'stats') loadStats();
@@ -187,8 +227,10 @@ export default function AdminPage() {
             if (tab === 'tasks') loadTasks();
             if (tab === 'activity') loadActivity();
             if (tab === 'payouts') loadPayouts();
+            if (tab === 'seo') loadSeo();
+            if (tab === 'theme') loadTheme();
         }
-    }, [tab, loading, user, loadStats, loadUsers, loadTasks, loadActivity, loadPayouts]);
+    }, [tab, loading, user, loadStats, loadUsers, loadTasks, loadActivity, loadPayouts, loadSeo, loadTheme]);
 
     const handleCreateUser = async () => {
         setCreateError('');
@@ -284,7 +326,7 @@ export default function AdminPage() {
                             )}
                         </div>
                         <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-                            {(['stats', 'users', 'tasks', 'activity', 'payouts'] as const).map(t => (
+                            {(['stats', 'users', 'tasks', 'activity', 'payouts', 'seo', 'theme'] as const).map(t => (
                                 <button key={t} className={`btn-activity ${tab === t ? '' : 'btn-clear'}`}
                                     style={tab === t ? { background: 'var(--primary)', color: '#fff' } : {}}
                                     onClick={() => setTab(t)}>
@@ -293,6 +335,8 @@ export default function AdminPage() {
                                     {t === 'tasks' && <><i className="fas fa-list-check"></i> Tasks</>}
                                     {t === 'activity' && <><i className="fas fa-clock-rotate-left"></i> Activity</>}
                                     {t === 'payouts' && <><i className="fas fa-money-bill-wave"></i> Payouts</>}
+                                    {t === 'seo' && <><i className="fas fa-magnifying-glass-chart"></i> SEO</>}
+                                    {t === 'theme' && <><i className="fas fa-palette"></i> Theme</>}
                                 </button>
                             ))}
                         </div>
@@ -658,6 +702,174 @@ export default function AdminPage() {
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {tab === 'seo' && (
+                    <>
+                    <div className="card">
+                        <div className="card-body">
+                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 4 }}><i className="fas fa-magnifying-glass-chart" style={{ color: 'var(--primary)', marginRight: 8 }}></i>SEO Configuration</h3>
+                            <p style={{ color: 'var(--gray-500)', fontSize: 13, marginBottom: 20 }}>Configure site-wide SEO meta tags, Open Graph, and indexing. Changes apply to all pages via dynamic metadata.</p>
+                            {!seoLoaded ? <div style={{ padding: 24, textAlign: 'center' }}><div className="loading-spinner" style={{ margin: '0 auto 8px' }}></div>Loading SEO settings...</div> : (
+                            <>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+                                <div>
+                                    <label className="form-label">Site Name</label>
+                                    <input className="form-control" value={String(seo.site_name || '')} onChange={e => setSeo({ ...seo, site_name: e.target.value })} placeholder="TaskTimer" />
+                                </div>
+                                <div>
+                                    <label className="form-label">Site URL (canonical base)</label>
+                                    <input className="form-control" value={String(seo.site_url || '')} onChange={e => setSeo({ ...seo, site_url: e.target.value })} placeholder="https://example.com" />
+                                </div>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <label className="form-label">SEO Title (50-60 chars) — {String(seo.title || '').length}/120</label>
+                                    <input className="form-control" value={String(seo.title || '')} onChange={e => setSeo({ ...seo, title: e.target.value })} placeholder="Title tag" />
+                                </div>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <label className="form-label">Meta Description (120-160 chars) — {String(seo.description || '').length}/320</label>
+                                    <textarea className="form-control" rows={3} value={String(seo.description || '')} onChange={e => setSeo({ ...seo, description: e.target.value })} placeholder="Meta description"></textarea>
+                                </div>
+                                <div style={{ gridColumn: '1 / -1' }}>
+                                    <label className="form-label">Keywords (comma separated)</label>
+                                    <input className="form-control" value={String(seo.keywords || '')} onChange={e => setSeo({ ...seo, keywords: e.target.value })} placeholder="keyword1, keyword2" />
+                                </div>
+                                <div>
+                                    <label className="form-label">OG Image URL</label>
+                                    <input className="form-control" value={String(seo.og_image || '')} onChange={e => setSeo({ ...seo, og_image: e.target.value })} placeholder="/tasktimer-logo.svg" />
+                                </div>
+                                <div>
+                                    <label className="form-label">Twitter Handle</label>
+                                    <input className="form-control" value={String(seo.twitter_handle || '')} onChange={e => setSeo({ ...seo, twitter_handle: e.target.value })} placeholder="@tasktimer" />
+                                </div>
+                                <div>
+                                    <label className="form-label">Canonical Path</label>
+                                    <input className="form-control" value={String(seo.canonical_url || '')} onChange={e => setSeo({ ...seo, canonical_url: e.target.value })} placeholder="/" />
+                                </div>
+                                <div>
+                                    <label className="form-label">Theme Color</label>
+                                    <input type="color" className="form-control" style={{ height: 42, padding: 4 }} value={String(seo.theme_color || '#6366f1')} onChange={e => setSeo({ ...seo, theme_color: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className="form-label">Author</label>
+                                    <input className="form-control" value={String(seo.author || '')} onChange={e => setSeo({ ...seo, author: e.target.value })} />
+                                </div>
+                                <div>
+                                    <label className="form-label">Google Verification</label>
+                                    <input className="form-control" value={String(seo.google_verification || '')} onChange={e => setSeo({ ...seo, google_verification: e.target.value })} placeholder="google site verification token" />
+                                </div>
+                                <div>
+                                    <label className="form-label">Bing Verification</label>
+                                    <input className="form-control" value={String(seo.bing_verification || '')} onChange={e => setSeo({ ...seo, bing_verification: e.target.value })} placeholder="msvalidate.01 token" />
+                                </div>
+                                <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}><input type="checkbox" checked={Boolean(seo.robots_index)} onChange={e => setSeo({ ...seo, robots_index: e.target.checked })} /> Index</label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}><input type="checkbox" checked={Boolean(seo.robots_follow)} onChange={e => setSeo({ ...seo, robots_follow: e.target.checked })} /> Follow</label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, fontWeight: 600 }}><input type="checkbox" checked={Boolean(seo.json_ld_enabled)} onChange={e => setSeo({ ...seo, json_ld_enabled: e.target.checked })} /> JSON-LD</label>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: 8, marginTop: 20, alignItems: 'center', flexWrap: 'wrap' }}>
+                                <button className="btn-primary" onClick={saveSeo} disabled={seoSaving} style={{ opacity: seoSaving ? 0.6 : 1 }}><i className="fas fa-floppy-disk"></i> {seoSaving ? 'Saving...' : 'Save SEO'}</button>
+                                <button className="btn-secondary" onClick={loadSeo}><i className="fas fa-rotate"></i> Reset</button>
+                                <span style={{ fontSize: 12, color: 'var(--gray-400)' }}>sitemap.xml & robots.txt update automatically from Site URL & robots flags</span>
+                            </div>
+                            <div style={{ marginTop: 16, background: 'var(--gray-50)', border: '1px solid var(--gray-200)', borderRadius: 10, padding: 12 }}>
+                                <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6, color: 'var(--gray-600)' }}><i className="fas fa-eye"></i> Preview</div>
+                                <div style={{ fontSize: 13, color: '#1a0dab', fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{String(seo.title || '')}</div>
+                                <div style={{ fontSize: 12, color: '#006621' }}>{String(seo.site_url || '')}{String(seo.canonical_url || '')}</div>
+                                <div style={{ fontSize: 12, color: 'var(--gray-600)' }}>{String(seo.description || '')}</div>
+                            </div>
+                            </>
+                            )}
+                        </div>
+                    </div>
+                    <div className="card" style={{ marginTop: 16 }}>
+                        <div className="card-body">
+                            <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, marginBottom: 4 }}><i className="fas fa-file-lines" style={{ color: 'var(--primary)', marginRight: 8 }}></i>Per-Page SEO — All Pages</h3>
+                            <p style={{ color: 'var(--gray-500)', fontSize: 12, marginBottom: 12 }}>Sob page er alada title/description/keywords manage korun. Global SEO fallback hisebe kaj korbe.</p>
+                            <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 12 }}>
+                                {pages.map((p: Record<string,unknown>) => (
+                                    <button key={String(p.route)} className="btn-activity" style={pageRoute===String(p.route) ? { background:'var(--primary)', color:'#fff' } : {}} onClick={()=> { setPageRoute(String(p.route)); setPageForm(p); }}>{String(p.route)}</button>
+                                ))}
+                            </div>
+                            {pageForm && String(pageForm.route||pageRoute) && (
+                            <div style={{ display: 'grid', gap: 12 }}>
+                                <div><label className="form-label">Title — {String(pageRoute)} — {String(pageForm.title||'').length}/120</label><input className="form-control" value={String(pageForm.title||'')} onChange={e=> setPageForm({ ...pageForm, title: e.target.value })} /></div>
+                                <div><label className="form-label">Description — {String(pageForm.description||'').length}/320</label><textarea className="form-control" rows={2} value={String(pageForm.description||'')} onChange={e=> setPageForm({ ...pageForm, description: e.target.value })} /></div>
+                                <div><label className="form-label">Keywords</label><input className="form-control" value={String(pageForm.keywords||'')} onChange={e=> setPageForm({ ...pageForm, keywords: e.target.value })} /></div>
+                                <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:12 }}>
+                                    <div><label className="form-label">OG Image</label><input className="form-control" value={String(pageForm.og_image||'')} onChange={e=> setPageForm({ ...pageForm, og_image: e.target.value })} /></div>
+                                    <div><label className="form-label">Canonical</label><input className="form-control" value={String(pageForm.canonical||'')} onChange={e=> setPageForm({ ...pageForm, canonical: e.target.value })} /></div>
+                                </div>
+                                <div style={{ display:'flex', gap:12 }}>
+                                    <label style={{ display:'flex', gap:6, fontSize:12, fontWeight:600 }}><input type="checkbox" checked={Boolean(pageForm.robots_index)} onChange={e=> setPageForm({ ...pageForm, robots_index: e.target.checked })} /> Index</label>
+                                    <label style={{ display:'flex', gap:6, fontSize:12, fontWeight:600 }}><input type="checkbox" checked={Boolean(pageForm.robots_follow)} onChange={e=> setPageForm({ ...pageForm, robots_follow: e.target.checked })} /> Follow</label>
+                                </div>
+                                <div style={{ display:'flex', gap:8 }}>
+                                    <button className="btn-primary" onClick={savePage} disabled={pageSaving}><i className="fas fa-floppy-disk"></i> {pageSaving?'Saving...':`Save ${pageRoute}`}</button>
+                                    <button className="btn-secondary" onClick={()=> { const cur = pages.find(p=>p.route===pageRoute); if(cur) setPageForm(cur); }}><i className="fas fa-rotate"></i> Reset</button>
+                                </div>
+                            </div>
+                            )}
+                        </div>
+                    </div>
+                    </>
+                )}
+
+                {tab === 'theme' && (
+                    <div className="card">
+                        <div className="card-body">
+                            <h3 style={{ margin: 0, fontSize: 16, fontWeight: 700, marginBottom: 4 }}><i className="fas fa-palette" style={{ color: 'var(--primary)', marginRight: 8 }}></i>Theme Panel — A to Z</h3>
+                            <p style={{ color: 'var(--gray-500)', fontSize: 13, marginBottom: 16 }}>A-Z full control: presets, colors, typography, spacing, shadows & dark mode. Global + personal (localStorage).</p>
+                            {!themeLoaded ? <div style={{ padding: 24, textAlign: 'center' }}><div className="loading-spinner" style={{ margin: '0 auto 8px' }}></div>Loading theme...</div> : (
+                            <>
+                            <div style={{ display: 'grid', gap: 16 }}>
+                                <div>
+                                    <div className="form-label" style={{ fontWeight: 700, fontSize: 12, letterSpacing: 0.5, color: 'var(--primary)' }}>A — Appearance Presets</div>
+                                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginTop: 6 }}>
+                                        {['indigo','emerald','rose','sky','amber','violet'].map(p => (
+                                            <button key={p} onClick={() => { const presets: Record<string,Record<string,string>> = { indigo:{primary:'#6366f1',primary_hover:'#4f46e5',primary_light:'#e0e7ff'}, emerald:{primary:'#10b981',primary_hover:'#059669',primary_light:'#d1fae5'}, rose:{primary:'#f43f5e',primary_hover:'#e11d48',primary_light:'#ffe4e6'}, sky:{primary:'#0ea5e9',primary_hover:'#0284c7',primary_light:'#e0f2fe'}, amber:{primary:'#f59e0b',primary_hover:'#d97706',primary_light:'#fef3c7'}, violet:{primary:'#8b5cf6',primary_hover:'#7c3aed',primary_light:'#ede9fe'}}; setTheme({ ...theme, preset: p, ...presets[p] }); }} className="btn-activity" style={theme.preset===p ? { background: 'var(--primary)', color:'#fff', borderColor:'var(--primary)' } : {}}>{p}</button>
+                                        ))}
+                                    </div>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 12 }}>
+                                    <div><label className="form-label">B — Primary</label><input type="color" className="form-control" style={{ height: 42, padding: 4 }} value={String(theme.primary||'#6366f1')} onChange={e=> setTheme({ ...theme, primary:e.target.value })} /></div>
+                                    <div><label className="form-label">C — Hover</label><input type="color" className="form-control" style={{ height: 42, padding: 4 }} value={String(theme.primary_hover||'#4f46e5')} onChange={e=> setTheme({ ...theme, primary_hover:e.target.value })} /></div>
+                                    <div><label className="form-label">D — Light</label><input type="color" className="form-control" style={{ height: 42, padding: 4 }} value={String(theme.primary_light||'#e0e7ff')} onChange={e=> setTheme({ ...theme, primary_light:e.target.value })} /></div>
+                                    <div><label className="form-label">E — Success</label><input type="color" className="form-control" style={{ height: 42, padding: 4 }} value={String(theme.success||'#22c55e')} onChange={e=> setTheme({ ...theme, success:e.target.value })} /></div>
+                                    <div><label className="form-label">F — Warning</label><input type="color" className="form-control" style={{ height: 42, padding: 4 }} value={String(theme.warning||'#f59e0b')} onChange={e=> setTheme({ ...theme, warning:e.target.value })} /></div>
+                                    <div><label className="form-label">G — Danger</label><input type="color" className="form-control" style={{ height: 42, padding: 4 }} value={String(theme.danger||'#ef4444')} onChange={e=> setTheme({ ...theme, danger:e.target.value })} /></div>
+                                    <div><label className="form-label">H — Info</label><input type="color" className="form-control" style={{ height: 42, padding: 4 }} value={String(theme.info||'#3b82f6')} onChange={e=> setTheme({ ...theme, info:e.target.value })} /></div>
+                                    <div><label className="form-label">I — Background</label><input type="color" className="form-control" style={{ height: 42, padding: 4 }} value={String(theme.background||'#f3f4f6')} onChange={e=> setTheme({ ...theme, background:e.target.value })} /></div>
+                                    <div><label className="form-label">J — Surface</label><input type="color" className="form-control" style={{ height: 42, padding: 4 }} value={String(theme.surface||'#ffffff')} onChange={e=> setTheme({ ...theme, surface:e.target.value })} /></div>
+                                    <div><label className="form-label">K — Text</label><input type="color" className="form-control" style={{ height: 42, padding: 4 }} value={String(theme.text||'#1f2937')} onChange={e=> setTheme({ ...theme, text:e.target.value })} /></div>
+                                </div>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12 }}>
+                                    <div><label className="form-label">L — Mode</label><select className="form-select" value={String(theme.mode||'light')} onChange={e=> setTheme({ ...theme, mode:e.target.value })}><option value="light">Light</option><option value="dark">Dark</option><option value="auto">Auto</option></select></div>
+                                    <div><label className="form-label">M — Radius</label><select className="form-select" value={String(theme.radius||'12px')} onChange={e=> setTheme({ ...theme, radius:e.target.value })}><option value="6px">6px</option><option value="12px">12px</option><option value="16px">16px</option><option value="20px">20px</option></select></div>
+                                    <div><label className="form-label">N — Radius LG</label><select className="form-select" value={String(theme.radius_lg||'16px')} onChange={e=> setTheme({ ...theme, radius_lg:e.target.value })}><option value="12px">12px</option><option value="16px">16px</option><option value="20px">20px</option><option value="24px">24px</option></select></div>
+                                    <div><label className="form-label">O — Font</label><select className="form-select" value={String(theme.font_family||'Inter')} onChange={e=> setTheme({ ...theme, font_family:e.target.value })}><option>Inter</option><option>Poppins</option><option>Roboto</option><option>Geist</option></select></div>
+                                    <div><label className="form-label">P — Density</label><select className="form-select" value={String(theme.density||'comfortable')} onChange={e=> setTheme({ ...theme, density:e.target.value })}><option value="compact">Compact</option><option value="comfortable">Comfortable</option><option value="spacious">Spacious</option></select></div>
+                                    <div><label className="form-label">Q — Shadows</label><select className="form-select" value={String(theme.shadows||'soft')} onChange={e=> setTheme({ ...theme, shadows:e.target.value })}><option value="none">None</option><option value="soft">Soft</option><option value="strong">Strong</option></select></div>
+                                    <div style={{ display:'flex', alignItems:'end' }}><label style={{ display:'flex', gap:6, fontSize:13, fontWeight:600 }}><input type="checkbox" checked={Boolean(theme.gradient)} onChange={e=> setTheme({ ...theme, gradient: e.target.checked })} /> R — Gradient</label></div>
+                                </div>
+                                <div style={{ background: 'var(--gray-50)', border:'1px solid var(--gray-200)', borderRadius: String(theme.radius_lg||'16px'), padding: 12, display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+                                    <span style={{ width:22, height:22, borderRadius:6, background: String(theme.primary)} }></span>
+                                    <span style={{ width:22, height:22, borderRadius:6, background: String(theme.success)} }></span>
+                                    <span style={{ width:22, height:22, borderRadius:6, background: String(theme.warning)} }></span>
+                                    <span style={{ width:22, height:22, borderRadius:6, background: String(theme.danger)} }></span>
+                                    <span style={{ fontSize:12, color:'var(--gray-500)' }}>S — Preview: {String(theme.preset)} · {String(theme.mode)} · Z — Zen ready</span>
+                                    <button className="btn-secondary" style={{ marginLeft:'auto' }} onClick={()=> { document.documentElement.style.setProperty('--primary', String(theme.primary)); document.documentElement.style.setProperty('--primary-hover', String(theme.primary_hover)); document.documentElement.style.setProperty('--primary-light', String(theme.primary_light)); }}><i className="fas fa-eye"></i> Live Preview</button>
+                                </div>
+                            </div>
+                            <div style={{ display:'flex', gap:8, marginTop:16 }}>
+                                <button className="btn-primary" onClick={saveTheme} disabled={themeSaving}><i className="fas fa-floppy-disk"></i> {themeSaving?'Saving...':'Save Theme'}</button>
+                                <button className="btn-secondary" onClick={loadTheme}><i className="fas fa-rotate"></i> Reset</button>
+                                <button className="btn-secondary" onClick={()=> { localStorage.removeItem('tasktimer_theme'); location.reload(); }}><i className="fas fa-broom"></i> Clear Local</button>
+                            </div>
+                            </>
+                            )}
                         </div>
                     </div>
                 )}

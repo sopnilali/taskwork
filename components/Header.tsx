@@ -21,8 +21,9 @@ export default function Header() {
     const isAuthPage = pathname?.startsWith('/auth');
     const isAdminPage = pathname?.startsWith('/admin');
     const isDashboardPage = pathname?.startsWith('/dashboard');
+    const isPublicPage = ['/', '/about', '/blog', '/pricing', '/contact'].some(p => pathname === p || pathname?.startsWith('/blog/'));
 
-    if (isAuthPage) return null;
+    if (isAuthPage || isPublicPage) return null;
 
     useEffect(() => {
         if (!user) return;
@@ -77,24 +78,6 @@ export default function Header() {
                         <span className="header-title">TaskTimer</span>
                     </div>
                 </Link>
-                {user && (isDashboardPage || isAdminPage) && (
-                    <div className="header-toggle">
-                        <button
-                            className={`header-toggle-btn ${isDashboardPage ? 'active' : ''}`}
-                            onClick={() => router.push('/dashboard')}
-                        >
-                            <i className="fas fa-table-columns"></i> Dashboard
-                        </button>
-                        {user.is_admin && (
-                            <button
-                                className={`header-toggle-btn ${isAdminPage ? 'active' : ''}`}
-                                onClick={() => router.push('/admin')}
-                            >
-                                <i className="fas fa-shield-halved"></i> Admin
-                            </button>
-                        )}
-                    </div>
-                )}
             </div>
             <div className="header-center">
                 {user && (isDashboardPage || pathname?.startsWith('/task-list')) && (

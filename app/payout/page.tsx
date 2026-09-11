@@ -23,7 +23,7 @@ export default function PayoutPage() {
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState('');
 
-    useEffect(() => { if (!loading && !user) router.replace('/auth'); }, [user, loading, router]);
+    useEffect(() => { if (!loading && !user) router.replace('/auth'); if (!loading && user && !user.is_admin) router.replace('/dashboard'); }, [user, loading, router]);
 
     const load = useCallback(async () => {
         try {
@@ -69,6 +69,7 @@ export default function PayoutPage() {
 
     if (loading) return <div className="loading-screen"><div className="loading-logo"><i className="fas fa-clock"></i></div><div className="loading-spinner"></div><p>Loading...</p></div>;
     if (!user) return null;
+    if (!user.is_admin) return null;
 
     return (
         <>
