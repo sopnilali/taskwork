@@ -15,8 +15,8 @@ export default function AuthPage() {
         }
     }, [user, loading, router]);
 
-    if (loading) return null;
-    if (user) return null;
+    if (loading) return <div className="loading-screen"><div className="loading-logo"><i className="fas fa-clock"></i></div><div className="loading-spinner"></div><p>Loading...</p></div>;
+    if (user) return <div className="loading-screen"><div className="loading-logo"><i className="fas fa-clock"></i></div><div className="loading-spinner"></div><p>Taking you to dashboard...</p></div>;
 
     return <AuthForm />;
 }

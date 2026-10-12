@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import PublicHeader from '@/components/PublicHeader';
 import PublicFooter from '@/components/PublicFooter';
+import AutoDashboardRedirect from '@/components/AutoDashboardRedirect';
 import { getBlogsFromDb } from '@/lib/blogs';
 export const dynamic = 'force-dynamic';
 export const metadata = { title: 'TaskTimer — Free Online Task Timer & Time Tracker', description: 'Free online task timer to track work time and earnings. Start in one click.' };
@@ -9,6 +10,7 @@ export default async function HomePage(){
   const latest = blogs.slice(0,4);
   return (
     <>
+      <AutoDashboardRedirect />
       <PublicHeader />
       <main>
         <section style={{ maxWidth:1200, margin:'0 auto', padding:'60px 20px', display:'grid', gridTemplateColumns:'1.1fr 0.9fr', gap:32, alignItems:'center' }}>
