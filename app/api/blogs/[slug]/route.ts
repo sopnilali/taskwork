@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initDatabase, sql } from '@/lib/db';
 import { authenticate } from '@/lib/auth';
+import { normalizeSlug } from '@/lib/slug';
 
 export async function GET(_: NextRequest, { params }: { params: Promise<{ slug: string }> }){
   await initDatabase();
-  const { slug } = await params;
+  const { slug: raw } = await params;
+  const slug = normalizeSlug(raw);
   const rows = await sql`SELECT * FROM blog_posts WHERE slug=${slug} LIMIT 1`;
   if (!rows.length) return NextResponse.json({ error:'Not found' },{status:404});
   return NextResponse.json(rows[0]);
@@ -14,7 +16,8 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ slug
   await initDatabase();
   const user = authenticate(req);
   if (!user) return NextResponse.json({ error:'Access denied' },{status:401});
-  const { slug } = await params;
+  const { slug: raw } = await params;
+  const slug = normalizeSlug(raw);
   const existing = await sql`SELECT * FROM blog_posts WHERE slug=${slug} LIMIT 1`;
   if (!existing.length) return NextResponse.json({ error:'Not found' },{status:404});
   const isAdmin = (user as any).is_admin;
@@ -31,7 +34,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ s
   await initDatabase();
   const user = authenticate(req);
   if (!user) return NextResponse.json({ error:'Access denied' },{status:401});
-  const { slug } = await params;
+  const { slug: rawDel } = await params;
+  const slug = normalizeSlug(rawDel);
   const rows = await sql`SELECT * FROM blog_posts WHERE slug=${slug} LIMIT 1`;
   if (!rows.length) return NextResponse.json({ error:'Not found' },{status:404});
   const isAdmin = (user as any).is_admin;
