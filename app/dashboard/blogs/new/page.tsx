@@ -1,12 +1,12 @@
 'use client';
 // @ts-nocheck
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ClassicEditor from '@/components/ClassicEditor';
-import { slugify, slugifyWithFallback } from '@/lib/slug';
+import { slugify, slugifyWithFallback, normalizeSlug } from '@/lib/slug';
 
 function pathToFocus(p:string){ return p.replace(/^\/blog\//,'').replace(/^\//,'').split(/[-_\/]+/).filter(Boolean).join(' '); }
 function stripHtml(h:string){ return h.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(); }
@@ -43,12 +43,15 @@ export default function NewPostPage(){
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [previewTab, setPreviewTab] = useState<'google'|'facebook'>('google');
-  const [form, setForm] = useState<any>({ title:'', excerpt:'', content:'', category:'Productivity', image:'', read_time:'3 min', seo_title:'', seo_description:'', seo_keywords:'', focus_keyword:'', og_image:'/tasktimer-logo.svg', canonical:'', robots_index:true, robots_follow:true, published:true });
+  const [form, setForm] = useState<any>({ title:'', slug:'', excerpt:'', content:'', category:'Productivity', image:'', read_time:'3 min', seo_title:'', seo_description:'', seo_keywords:'', focus_keyword:'', og_image:'/tasktimer-logo.svg', canonical:'', robots_index:true, robots_follow:true, published:true });
+  // Auto-permalink: follows title until user edits slug/canonical manually.
+  const slugTouchedRef = useRef(false);
+  const canonicalTouchedRef = useRef(false);
 
   useEffect(()=>{ if(!loading && !user) router.replace('/auth'); },[user,loading,router]);
   useEffect(()=>{ if(editSlug) loadEdit(); },[editSlug]);
   const loadEdit = async ()=>{
-    try{ const r=await authFetch(`/api/blogs/${editSlug}`); const d=await r.json(); if(r.ok) setForm({ title:d.title||'', excerpt:d.excerpt||'', content:d.content||'', category:d.category||'Productivity', image:d.image||'', read_time:d.read_time||'3 min', seo_title:d.seo_title||'', seo_description:d.seo_description||'', seo_keywords:d.seo_keywords||'', focus_keyword:d.focus_keyword||'', og_image:d.og_image||'/tasktimer-logo.svg', canonical:d.canonical||'', robots_index: d.robots_index===false?false:true, robots_follow: d.robots_follow===false?false:true, published: d.published===false?false:true }as any); }catch{}
+    try{ const r=await authFetch(`/api/blogs/${editSlug}`); const d=await r.json(); if(r.ok) setForm({ title:d.title||'', slug: normalizeSlug(String(editSlug||'')), excerpt:d.excerpt||'', content:d.content||'', category:d.category||'Productivity', image:d.image||'', read_time:d.read_time||'3 min', seo_title:d.seo_title||'', seo_description:d.seo_description||'', seo_keywords:d.seo_keywords||'', focus_keyword:d.focus_keyword||'', og_image:d.og_image||'/tasktimer-logo.svg', canonical:d.canonical||'', robots_index: d.robots_index===false?false:true, robots_follow: d.robots_follow===false?false:true, published: d.published===false?false:true }as any); }catch{}
   };
 
   const [uploading, setUploading] = useState(false);
@@ -70,9 +73,25 @@ export default function NewPostPage(){
     }catch(e:any){ setMsg(e.message);} finally{ setUploading(false); }
   };
   const onTitle = (t:string)=>{
-    const slug=slugify(t);
-    const focus=pathToFocus(slug) || t.toLowerCase().split(/\s+/).slice(0,4).join(' ');
-    setForm((s:any)=> ({...s, title:t, seo_title: s.seo_title||t, focus_keyword: s.focus_keyword||focus, seo_keywords: s.seo_keywords||focus, canonical: s.canonical||`/blog/${slug}`}));
+    const auto=slugify(t);
+    const focus=pathToFocus(auto) || t.toLowerCase().split(/\s+/).slice(0,4).join(' ');
+    setForm((s:any)=> {
+      const slug = slugTouchedRef.current ? (s.slug || auto) : auto;
+      const autoCanon = auto ? `/blog/${auto}` : '';
+      const canonical = canonicalTouchedRef.current ? (s.canonical || autoCanon) : autoCanon;
+      return {...s, title:t, slug, seo_title: s.seo_title||t, focus_keyword: s.focus_keyword||focus, seo_keywords: s.seo_keywords||focus, canonical};
+    });
+  };
+  const onSlug = (v:string)=>{
+    slugTouchedRef.current = true;
+    const slug = slugify(v);
+    setForm((s:any)=> ({...s, slug, canonical: canonicalTouchedRef.current ? s.canonical : (slug ? `/blog/${slug}` : '')}));
+  };
+  const resetPermalink = ()=>{
+    slugTouchedRef.current = false;
+    canonicalTouchedRef.current = false;
+    const auto = slugify(form.title);
+    setForm((s:any)=> ({...s, slug: auto, canonical: auto ? `/blog/${auto}` : ''}));
   };
 
   const analysis = useMemo(()=> analyze(form), [form]);
@@ -117,6 +136,17 @@ export default function NewPostPage(){
               <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:12 }}>
                 <div><label className="form-label">Title *</label><input className="form-control" value={form.title} onChange={e=> onTitle(e.target.value)} placeholder="e.g. Boost Productivity with Timer" /></div>
                 <div><label className="form-label">Category</label><select className="form-select" value={form.category} onChange={e=> setForm({...form, category:e.target.value})}><option>Productivity</option><option>Freelance</option><option>Focus</option><option>Teams</option><option>SEO</option><option>General</option></select></div>
+              </div>
+              <div>
+                <label className="form-label">Permalink {form.slug ? (slugTouchedRef.current ? '(custom)' : '(auto from title)') : '(auto from title)'}</label>
+                <div style={{ display:'flex', gap:8, alignItems:'center' }}>
+                  <span style={{ fontSize:12, color:'var(--gray-500)', background:'var(--gray-50)', border:'1px solid var(--gray-200)', borderRadius:8, padding:'9px 10px', whiteSpace:'nowrap' }}>/blog/</span>
+                  <input className="form-control" value={form.slug} onChange={e=> onSlug(e.target.value)} placeholder="auto-from-title" disabled={!!editSlug} style={{ flex:1 }} />
+                  {!editSlug && <button className="btn-secondary" style={{ fontSize:12, whiteSpace:'nowrap' }} onClick={resetPermalink} title="Back to auto from title"><i className="fas fa-rotate"/> Auto</button>}
+                </div>
+                <div style={{ fontSize:11, color:'var(--gray-500)', marginTop:4 }}>
+                  {editSlug ? 'Permalink locked after publish to keep shared links working.' : <>Live URL: <b style={{ color:'var(--primary)' }}>tasktimer.example.com/blog/{form.slug || '…'}</b> — type title to auto-generate, or edit slug manually.</>}
+                </div>
               </div>
               <div><label className="form-label">Excerpt</label><textarea className="form-control" rows={2} value={form.excerpt} onChange={e=> setForm({...form, excerpt:e.target.value, seo_description: form.seo_description||e.target.value})} placeholder="120-160 chars summary" /></div>
               <div><label className="form-label">Content * — Classic Editor (CMS) — {analysis.words} words</label><ClassicEditor value={form.content} onChange={v=> setForm({...form, content:v})} onImageUpload={onContentImageUpload} /></div>
@@ -193,7 +223,7 @@ export default function NewPostPage(){
                 <div><label className="form-label">SEO Keywords (comma)</label><input className="form-control" value={form.seo_keywords} onChange={e=> setForm({...form, seo_keywords:e.target.value})} placeholder="task timer, productivity" /></div>
                 <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                   <div><label className="form-label">OG Image</label><input className="form-control" value={form.og_image} onChange={e=> setForm({...form, og_image:e.target.value})} /></div>
-                  <div><label className="form-label">Canonical (path)</label><input className="form-control" value={form.canonical} onChange={e=> setForm({...form, canonical:e.target.value})} placeholder="/blog/my-post" /></div>
+                  <div><label className="form-label">Canonical (path)</label><input className="form-control" value={form.canonical} onChange={e=> { canonicalTouchedRef.current = true; setForm({...form, canonical:e.target.value}); }} placeholder="/blog/my-post" /></div>
                 </div>
                 <div style={{ display:'flex', gap:12 }}><label style={{ display:'flex', gap:6, fontSize:12, fontWeight:600 }}><input type="checkbox" checked={form.robots_index} onChange={e=> setForm({...form, robots_index:e.target.checked})} /> Index</label><label style={{ display:'flex', gap:6, fontSize:12, fontWeight:600 }}><input type="checkbox" checked={form.robots_follow} onChange={e=> setForm({...form, robots_follow:e.target.checked})} /> Follow</label></div>
               </div>
