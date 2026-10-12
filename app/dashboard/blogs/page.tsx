@@ -10,11 +10,18 @@ export default function AllPostsPage(){
   const router = useRouter();
   const [posts, setPosts] = useState<any[]>([]);
   const [q, setQ] = useState('');
+  const [copied, setCopied] = useState<string | null>(null);
 
   useEffect(()=>{ if(!loading && !user) router.replace('/auth'); },[user,loading,router]);
   useEffect(()=>{ if(user) load(); },[user]);
   const load = async ()=>{ try{ const r=await authFetch('/api/blogs?mine=1'); const d=await r.json(); if(Array.isArray(d)) setPosts(d);}catch{} };
-  const del = async (slug:string)=>{ if(!confirm('Delete "'+slug+'"?'))return; await authFetch(`/api/blogs/${slug}`,{method:'DELETE'}); load(); };
+  const del = async (slug:string)=>{ if(!confirm('Delete "'+slug+'"?'))return; await authFetch(`/api/blogs/${encodeURIComponent(slug)}`,{method:'DELETE'}); load(); };
+  const copyLink = async (slug:string)=>{
+    const url = `${window.location.origin}/blog/${slug}`;
+    try{ await navigator.clipboard.writeText(url); }
+    catch{ const ta=document.createElement('textarea'); ta.value=url; document.body.appendChild(ta); ta.select(); document.execCommand('copy'); ta.remove(); }
+    setCopied(slug); setTimeout(()=> setCopied(c=> c===slug?null:c), 1500);
+  };
 
   const filtered = posts.filter(p=> !q || String(p.title).toLowerCase().includes(q.toLowerCase()) || String(p.category).toLowerCase().includes(q.toLowerCase()));
 
@@ -47,6 +54,7 @@ export default function AllPostsPage(){
                   <thead>
                     <tr style={{ borderBottom:'2px solid var(--gray-200)', textAlign:'left' }}>
                       <th style={{ padding:'10px 12px' }}>Post</th>
+                      <th style={{ padding:'10px 12px' }}>Permalink</th>
                       <th style={{ padding:'10px 12px' }}>Category</th>
                       <th style={{ padding:'10px 12px' }}>Focus Keyword</th>
                       <th style={{ padding:'10px 12px' }}>Status</th>
@@ -68,6 +76,15 @@ export default function AllPostsPage(){
                               </div>
                             </div>
                           </td>
+                          <td style={{ padding:'10px 12px', maxWidth:200 }}>
+                            <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                              <span style={{ fontSize:11, color:'var(--gray-500)', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis', maxWidth:150 }} title={`/blog/${p.slug}`}>/blog/{p.slug}</span>
+                              <button className="btn-secondary" style={{ padding:'4px 8px', fontSize:11 }} onClick={()=> copyLink(p.slug)} title="Copy public link">
+                                <i className={`fas ${copied===p.slug ? 'fa-check' : 'fa-link'}`} style={copied===p.slug ? { color:'var(--success)' } : {}} />
+                              </button>
+                            </div>
+                            {copied===p.slug && <div style={{ fontSize:10, color:'var(--success)', fontWeight:700 }}>Copied!</div>}
+                          </td>
                           <td style={{ padding:'10px 12px' }}><span style={{ background:'var(--gray-100)', padding:'4px 8px', borderRadius:20, fontSize:11, fontWeight:600 }}>{p.category}</span></td>
                           <td style={{ padding:'10px 12px' }}><span style={{ fontSize:11, color:'var(--primary)', background:'var(--primary-light)', padding:'4px 8px', borderRadius:20, fontWeight:600 }}>{focus}</span></td>
                           <td style={{ padding:'10px 12px' }}><span style={{ padding:'4px 8px', borderRadius:20, fontSize:11, fontWeight:700, background: p.published ? 'var(--success-light)' : '#fef3c7', color: p.published ? 'var(--success)' : '#d97706' }}>{p.published ? 'Published' : 'Draft'}</span></td>
@@ -80,7 +97,7 @@ export default function AllPostsPage(){
                         </tr>
                       );
                     })}
-                    {filtered.length===0 && <tr><td colSpan={6} style={{ padding:24, textAlign:'center', color:'var(--gray-400)' }}>No posts found — <button className="btn-primary" style={{ marginLeft:8 }} onClick={()=> router.push('/dashboard/blogs/new')}>Create New Post</button></td></tr>}
+                    {filtered.length===0 && <tr><td colSpan={7} style={{ padding:24, textAlign:'center', color:'var(--gray-400)' }}>No posts found — <button className="btn-primary" style={{ marginLeft:8 }} onClick={()=> router.push('/dashboard/blogs/new')}>Create New Post</button></td></tr>}
                   </tbody>
                 </table>
               </div>
