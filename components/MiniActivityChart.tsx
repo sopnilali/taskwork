@@ -36,16 +36,15 @@ export default function MiniActivityChart() {
         } catch {}
     }, [authFetch]);
 
-    useEffect(() => { load(); }, [load, pathname]);
     useEffect(() => {
         load();
-        const id = setInterval(() => { if (document.visibilityState === 'visible') load(); }, 10000);
+        const id = setInterval(() => { if (document.visibilityState === 'visible') load(); }, 30000);
         const onRefresh = () => load();
         window.addEventListener('stats-refresh', onRefresh);
         const onVis = () => { if (document.visibilityState === 'visible') load(); };
         document.addEventListener('visibilitychange', onVis);
         return () => { clearInterval(id); window.removeEventListener('stats-refresh', onRefresh); document.removeEventListener('visibilitychange', onVis); };
-    }, [load]);
+    }, [load, pathname]);
 
     const maxH = Math.max(1, ...data.map(d => d.hours));
     const maxC = Math.max(1, ...data.map(d => d.count));

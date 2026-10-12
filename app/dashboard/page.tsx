@@ -53,23 +53,15 @@ export default function DashboardPage() {
                     <div className="page-header">
                         <div>
                             <h1 className="page-title"><i className="fas fa-table-columns"></i> {isAdmin ? 'Dashboard' : 'My Dashboard'}</h1>
-                            <p className="page-subtitle">Welcome back, {user.username} — {isAdmin ? "here's your overview" : "blog & read access"}</p>
+                            <p className="page-subtitle">Welcome back, {user.username} — here's your overview</p>
                         </div>
                         <div className="page-header-actions">
-                            {isAdmin ? (
-                              <>
+                            <>
                                 <button className="btn-primary" onClick={() => router.push('/task-work')}><i className="fas fa-play"></i> Start Working</button>
                                 <button className="btn-secondary" onClick={() => router.push('/task-list')}><i className="fas fa-list"></i> View Tasks</button>
-                              </>
-                            ) : (
-                              <>
-                                <button className="btn-primary" onClick={() => router.push('/dashboard/blogs/new')}><i className="fas fa-plus"></i> New Post</button>
-                                <button className="btn-secondary" onClick={() => router.push('/blog')}><i className="fas fa-book-open"></i> View Blog</button>
-                              </>
-                            )}
+                            </>
                         </div>
                     </div>
-                    {isAdmin ? (
                     <>
                     <SummaryCards refreshKey={refreshKey} currentSessionSeconds={currentSessionSeconds} />
                     <MiniActivityChart />
@@ -95,15 +87,6 @@ export default function DashboardPage() {
                         </div>
                     </div>
                     </>
-                    ) : (
-                    <div className="card" style={{ marginBottom:16, background:'var(--primary-light)', border:'1px solid var(--primary)' }}>
-                      <div className="card-body" style={{ display:'flex', gap:12, alignItems:'center' }}>
-                        <div style={{ width:36, height:36, borderRadius:8, background:'var(--primary)', color:'#fff', display:'flex', alignItems:'center', justifyContent:'center' }}><i className="fas fa-user"/></div>
-                        <div><div style={{ fontWeight:800 }}>User Mode — Blog Only</div><div style={{ fontSize:12, color:'var(--gray-600)' }}>You have blog post create + read access. Task/Payout/Admin are admin-only.</div></div>
-                        <button className="btn-primary" style={{ marginLeft:'auto' }} onClick={()=> router.push('/dashboard/blogs/new')}>Create Blog Post →</button>
-                      </div>
-                    </div>
-                    )}
                     <div id="blog-post-form" className="card" style={{ marginTop:16 }}>
                         <div className="card-body">
                             <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', flexWrap:'wrap', gap:10 }}>

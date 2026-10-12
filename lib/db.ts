@@ -21,9 +21,17 @@ export const sql: any = new Proxy(() => {}, {
   get(_t, prop) { return (getSql() as unknown as Record<string, unknown>)[prop as string]; },
 });
 
+let initPromise: Promise<void> | null = null;
+
 export async function initDatabase() {
     if (typeof window !== 'undefined') return;
     if (!process.env.DATABASE_URL) return;
+    if (initPromise) return initPromise;
+    initPromise = initDatabaseInner().catch((err) => { initPromise = null; throw err; });
+    return initPromise;
+}
+
+async function initDatabaseInner() {
     await sql`
         CREATE TABLE IF NOT EXISTS users (
             id SERIAL PRIMARY KEY,

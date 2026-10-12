@@ -200,8 +200,6 @@ export default function TimerCard({ onTaskSaved, onSessionUpdate }: { onTaskSave
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(task),
         }).then(() => onTaskSaved()).catch(console.error);
-
-        onTaskSaved();
     };
 
     const resetTimer = () => {

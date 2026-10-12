@@ -1,7 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { usePathname } from 'next/navigation';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import ActivityItem from './ActivityItem';
 
@@ -28,11 +27,20 @@ const FILTERS = [
 
 export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
     const { authFetch } = useAuth();
-    const pathname = usePathname();
     const [tasks, setTasks] = useState<Task[]>([]);
     const [filter, setFilter] = useState('all');
     const [searchQuery, setSearchQuery] = useState('');
     const [loading, setLoading] = useState(true);
+    const [refreshing, setRefreshing] = useState(false);
+    const [error, setError] = useState('');
+    const fetchingRef = useRef(false);
+    const hasLoadedOnce = useRef(false);
+    // Stable refs so background polling never re-triggers full reloads
+    // when context identities change (e.g. token set after mount).
+    const authFetchRef = useRef(authFetch);
+    authFetchRef.current = authFetch;
+    const filterRef = useRef(filter);
+    filterRef.current = filter;
 
 
     useEffect(() => {
@@ -41,17 +49,35 @@ export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
         return () => window.removeEventListener('task-search' as unknown as string, handler as EventListener);
     }, []);
 
-    const loadActivityLog = useCallback(async () => {
+    // Stable identity: reads latest authFetch/filter via refs.
+    // Never changes, so effects below run exactly when intended.
+    const loadActivityLog = useCallback(async (opts: { silent?: boolean } = {}) => {
+        if (fetchingRef.current) return;
+        fetchingRef.current = true;
+        const silent = opts.silent ?? hasLoadedOnce.current;
         try {
-            setLoading(true);
-            const url = `/api/tasks?filter=${filter}`;
-            const res = await authFetch(url);
+            if (!silent) setLoading(true);
+            else setRefreshing(true);
+            if (!silent) setError('');
+            const url = `/api/tasks?filter=${filterRef.current}`;
+            const res = await authFetchRef.current(url);
             const data = await res.json();
+            if (!res.ok) throw new Error((data as { error?: string }).error || 'Failed to load tasks');
             setTasks(Array.isArray(data) ? data : []);
+            setError('');
+            hasLoadedOnce.current = true;
         } catch (err) {
             console.error('Failed to load activity log:', err);
-        } finally { setLoading(false); }
-    }, [authFetch, filter]);
+            if (!hasLoadedOnce.current) {
+                setError(err instanceof Error ? err.message : 'Failed to load tasks');
+                setTasks([]);
+            }
+        } finally {
+            fetchingRef.current = false;
+            setLoading(false);
+            setRefreshing(false);
+        }
+    }, []);
 
     const deleteTask = async (id: number) => {
         try {
@@ -77,19 +103,31 @@ export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
         }
     };
 
+    // Full load only on mount + real filter change.
     useEffect(() => {
-        loadActivityLog();
-    }, [pathname]);
+        hasLoadedOnce.current = false;
+        loadActivityLog({ silent: false });
+    }, [filter, loadActivityLog]);
 
+    // Silent background sync: single interval + events, mounted once.
+    // Never touches `loading`, so the list never flashes/disappears.
     useEffect(() => {
-        loadActivityLog();
-        const interval = setInterval(() => { if (document.visibilityState === 'visible') loadActivityLog(); }, 10000);
-        const onRefresh = () => loadActivityLog();
+        const interval = setInterval(() => { if (document.visibilityState === 'visible') loadActivityLog({ silent: true }); }, 30000);
+        const onRefresh = () => loadActivityLog({ silent: true });
         window.addEventListener('stats-refresh', onRefresh);
-        const onVisible = () => { if (document.visibilityState === 'visible') loadActivityLog(); };
+        const onVisible = () => { if (document.visibilityState === 'visible') loadActivityLog({ silent: true }); };
         document.addEventListener('visibilitychange', onVisible);
         return () => { clearInterval(interval); window.removeEventListener('stats-refresh', onRefresh); document.removeEventListener('visibilitychange', onVisible); };
-    }, [loadActivityLog, refreshKey]);
+    }, [loadActivityLog]);
+
+    // Parent-forced refresh (refreshKey bump) — silent.
+    const prevRefreshKey = useRef(refreshKey);
+    useEffect(() => {
+        if (prevRefreshKey.current !== refreshKey) {
+            prevRefreshKey.current = refreshKey;
+            loadActivityLog({ silent: true });
+        }
+    }, [refreshKey, loadActivityLog]);
 
     return (
         <div className="right-panel activity-panel">
@@ -105,13 +143,21 @@ export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
                                 {f.label}
                             </button>
                         ))}
+                        {refreshing && <span style={{ marginLeft: 'auto', fontSize: 11, color: 'var(--gray-400)', alignSelf: 'center' }}><i className="fas fa-rotate fa-spin"></i></span>}
                     </div>
 
                     <div className="activity-list">
                         {loading ? (
                             <div className="card-loading"><div className="loading-spinner small"></div><p>Loading tasks...</p></div>
+                        ) : error ? (
+                            <div className="empty-state">
+                                <div className="empty-icon"><i className="fas fa-triangle-exclamation"></i></div>
+                                <div className="empty-title">Failed to load tasks</div>
+                                <div className="empty-text">{error}</div>
+                                <button className="btn-activity" style={{ marginTop: 12 }} onClick={() => loadActivityLog({ silent: false })}><i className="fas fa-rotate"></i> Retry</button>
+                            </div>
                         ) : (() => {
-                            const filtered = searchQuery ? tasks.filter(t => t.task_name.toLowerCase().includes(searchQuery) || t.category.toLowerCase().includes(searchQuery)) : tasks;
+                            const filtered = searchQuery ? tasks.filter(t => (t.task_name || '').toLowerCase().includes(searchQuery) || (t.category || '').toLowerCase().includes(searchQuery)) : tasks;
                             if (filtered.length === 0) {
                                 return (
                                     <div className="empty-state">
@@ -121,16 +167,17 @@ export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
                                     </div>
                                 );
                             }
+                            const dateKeyOf = (t: Task) => (t.work_date || t.created_at || t.started_at || '').slice(0, 10) || 'No date';
                             const sorted = [...filtered].sort((a, b) => {
-                                const da = (a.work_date || a.created_at || a.started_at || '').slice(0, 10);
-                                const db = (b.work_date || b.created_at || b.started_at || '').slice(0, 10);
+                                const da = dateKeyOf(a);
+                                const db = dateKeyOf(b);
                                 if (da !== db) return db.localeCompare(da);
                                 return (b.created_at || b.started_at || '').localeCompare(a.created_at || a.started_at || '');
                             });
                             const groups: Record<string, typeof filtered> = {};
                             const order: string[] = [];
                             sorted.forEach(t => {
-                                const k = (t.work_date || t.created_at || t.started_at || '').slice(0, 10);
+                                const k = dateKeyOf(t);
                                 if (!groups[k]) { groups[k] = []; order.push(k); }
                                 groups[k].push(t);
                             });
@@ -138,9 +185,10 @@ export default function ActivityPanel({ refreshKey }: { refreshKey: number }) {
                             const y = new Date(); y.setDate(y.getDate() - 1);
                             const yStr = y.toLocaleDateString('en-CA');
                             const fmtHeader = (k: string) => {
-                                const [y, m, d] = k.split('-').map(Number);
+                                if (!/^\d{4}-\d{2}-\d{2}$/.test(k)) return k;
+                                const [yy, m, d] = k.split('-').map(Number);
                                 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                                const formatted = k && /^\d{4}-\d{2}-\d{2}$/.test(k) ? `${String(d).padStart(2, '0')} ${months[m - 1]} ${y}` : k;
+                                const formatted = `${String(d).padStart(2, '0')} ${months[m - 1]} ${yy}`;
                                 if (k === todayStr) return `Today — ${formatted}`;
                                 if (k === yStr) return `Yesterday — ${formatted}`;
                                 return formatted;

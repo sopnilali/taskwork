@@ -70,17 +70,13 @@ export default function SummaryCards({ refreshKey, currentSessionSeconds }: { re
 
     useEffect(() => {
         loadStats();
-    }, [pathname]);
-
-    useEffect(() => {
-        loadStats();
-        const interval = setInterval(() => { if (document.visibilityState === 'visible') loadStats(); }, 10000);
+        const interval = setInterval(() => { if (document.visibilityState === 'visible') loadStats(); }, 30000);
         const onRefresh = () => loadStats();
         window.addEventListener('stats-refresh', onRefresh);
         const onVisible = () => { if (document.visibilityState === 'visible') loadStats(); };
         document.addEventListener('visibilitychange', onVisible);
         return () => { clearInterval(interval); window.removeEventListener('stats-refresh', onRefresh); document.removeEventListener('visibilitychange', onVisible); };
-    }, [loadStats, refreshKey]);
+    }, [loadStats, refreshKey, pathname]);
 
     const active = range === 'today' ? today : range === 'yesterday' ? yesterday : range === 'week' ? week : range === 'month' ? month : allTime;
 

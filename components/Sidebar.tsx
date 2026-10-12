@@ -23,8 +23,6 @@ export default function Sidebar() {
                     <i className="fas fa-table-columns"></i> {isAdmin ? 'Dashboard' : 'My Dashboard'}
                 </button>
 
-                {isAdmin && (
-                <>
                 <button className={`sidebar-item ${open ? 'open' : ''}`} onClick={() => setOpen(v => !v)}>
                     <span className="sidebar-item-left">
                         <i className="fas fa-layer-group"></i> Task
@@ -40,8 +38,6 @@ export default function Sidebar() {
                             <i className="fas fa-list-check"></i> Task List
                         </button>
                     </div>
-                )}
-                </>
                 )}
 
                 <button className={`sidebar-item ${blogOpen ? 'open' : ''}`} onClick={() => setBlogOpen(v => !v)} style={{ marginTop: 8 }}>
@@ -64,11 +60,11 @@ export default function Sidebar() {
                     </div>
                 )}
 
-                {isAdmin && (
-                <>
                 <button className={`sidebar-nav-item ${isPayout ? 'active' : ''}`} onClick={() => router.push('/payout')} style={{ marginTop: 8 }}>
                     <i className="fas fa-money-bill-wave"></i> Payout
                 </button>
+                {isAdmin && (
+                <>
                 <button className={`sidebar-nav-item ${pathname?.startsWith('/admin') ? 'active' : ''}`} onClick={() => router.push('/admin')} style={{ marginTop: 8 }}>
                     <i className="fas fa-shield-halved"></i> Admin Panel
                 </button>
@@ -77,7 +73,7 @@ export default function Sidebar() {
             </div>
             {!isAdmin && (
               <div style={{ marginTop:16, padding:12, background:'var(--primary-light)', borderRadius:10, fontSize:11, color:'var(--primary)', fontWeight:600, textAlign:'center' }}>
-                <i className="fas fa-user" style={{ marginRight:4 }}/> User Mode — Blog & Read only
+                <i className="fas fa-user" style={{ marginRight:4 }}/> Track tasks, earnings & blog
               </div>
             )}
         </aside>
