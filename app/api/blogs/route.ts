@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { initDatabase, sql } from '@/lib/db';
 import { authenticate } from '@/lib/auth';
-
-function slugify(t: string){ return t.toLowerCase().trim().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'').slice(0,60); }
+import { slugifyWithFallback } from '@/lib/slug';
 
 export async function GET(req: NextRequest){
   await initDatabase();
@@ -29,7 +28,7 @@ export async function POST(req: NextRequest){
   if (!user) return NextResponse.json({ error:'Access denied' },{status:401});
   const b = await req.json();
   if (!b.title || !b.content) return NextResponse.json({ error:'Title and content required' },{status:400});
-  const slug = b.slug ? slugify(String(b.slug)) : slugify(String(b.title));
+  const slug = slugifyWithFallback(b.slug ? String(b.slug) : String(b.title));
   const pathFocus = slug.split('-').filter(Boolean).join(' ');
   const focusKw = String(b.focus_keyword || pathFocus || String(b.title).toLowerCase().split(/\s+/).slice(0,3).join(' ')).slice(0,80);
   const autoKw = b.seo_keywords ? String(b.seo_keywords) : (focusKw + ', ' + pathFocus + ', ' + String(b.category||'').toLowerCase()).split(',').map((s:string)=>s.trim()).filter(Boolean).slice(0,5).join(', ');

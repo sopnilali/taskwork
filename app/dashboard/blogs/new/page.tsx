@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import Header from '@/components/Header';
 import Sidebar from '@/components/Sidebar';
 import ClassicEditor from '@/components/ClassicEditor';
+import { slugify, slugifyWithFallback } from '@/lib/slug';
 
 function pathToFocus(p:string){ return p.replace(/^\/blog\//,'').replace(/^\//,'').split(/[-_\/]+/).filter(Boolean).join(' '); }
 function stripHtml(h:string){ return h.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim(); }
@@ -60,7 +61,7 @@ export default function NewPostPage(){
     if(!f) return;
     setUploading(true); setMsg('');
     try{
-      const fd = new FormData(); fd.append('file', f); fd.append('slug', form.title.toLowerCase().replace(/[^a-z0-9]+/g,'-'));
+      const fd = new FormData(); fd.append('file', f); fd.append('slug', slugifyWithFallback(form.title));
       const r = await authFetch('/api/upload', { method:'POST', body: fd as any });
       const d = await r.json();
       if(!r.ok) throw new Error(d.error||'Upload failed');
@@ -69,7 +70,7 @@ export default function NewPostPage(){
     }catch(e:any){ setMsg(e.message);} finally{ setUploading(false); }
   };
   const onTitle = (t:string)=>{
-    const slug=t.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'');
+    const slug=slugify(t);
     const focus=pathToFocus(slug) || t.toLowerCase().split(/\s+/).slice(0,4).join(' ');
     setForm((s:any)=> ({...s, title:t, seo_title: s.seo_title||t, focus_keyword: s.focus_keyword||focus, seo_keywords: s.seo_keywords||focus, canonical: s.canonical||`/blog/${slug}`}));
   };

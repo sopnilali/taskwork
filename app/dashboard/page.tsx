@@ -7,6 +7,7 @@ import Sidebar from '@/components/Sidebar';
 import SummaryCards from '@/components/SummaryCards';
 import MiniActivityChart from '@/components/MiniActivityChart';
 import ActivityPanel from '@/components/ActivityPanel';
+import { slugify } from '@/lib/slug';
 
 export default function DashboardPage() {
     const { user, loading, authFetch } = useAuth();
@@ -100,7 +101,7 @@ export default function DashboardPage() {
                             {showBlogForm && (
                             <div style={{ display:'grid', gap:12, marginTop:14, background:'var(--gray-50)', border:'1px solid var(--gray-200)', borderRadius:12, padding:16 }}>
                                 <div style={{ display:'grid', gridTemplateColumns:'2fr 1fr', gap:12 }}>
-                                    <div><label className="form-label">Title *</label><input className="form-control" value={blogForm.title} onChange={e=> { const t=e.target.value; const slug=t.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,''); const focus=autoFocus(t, slug); setBlogForm(s=> ({...s, title:t, seo_title: s.seo_title||t, seo_keywords: s.seo_keywords||focus, canonical: s.canonical||`/blog/${slug}`})); }} placeholder="Post title" /></div>
+                                    <div><label className="form-label">Title *</label><input className="form-control" value={blogForm.title} onChange={e=> { const t=e.target.value; const slug=slugify(t); const focus=autoFocus(t, slug); setBlogForm(s=> ({...s, title:t, seo_title: s.seo_title||t, seo_keywords: s.seo_keywords||focus, canonical: s.canonical||`/blog/${slug}`})); }} placeholder="Post title" /></div>
                                     <div><label className="form-label">Category</label><select className="form-select" value={blogForm.category} onChange={e=> setBlogForm({...blogForm, category:e.target.value})}><option>Productivity</option><option>Freelance</option><option>Focus</option><option>Teams</option><option>SEO</option><option>General</option></select></div>
                                 </div>
                                 <div><label className="form-label">Excerpt</label><textarea className="form-control" rows={2} value={blogForm.excerpt} onChange={e=> setBlogForm({...blogForm, excerpt:e.target.value, seo_description: blogForm.seo_description||e.target.value})} placeholder="Short summary 120-160 chars" /></div>
